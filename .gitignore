@@ -1,0 +1,25 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+.env
+.env.local
+.env.*.local
+
+# Claude Code / Agent SDK / outras IDEs locais (contém tokens reais)
+.claude/settings.local.json
+.agents/local/
+
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+prisma/migrations/dev/
+/coverage
+/.turbo
+
+uploads/
+tmp/

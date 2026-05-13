@@ -1,0 +1,840 @@
+// Cestacorp — Schema Prisma (PostgreSQL)
+// Dados estruturados: clientes, contratos, honorários, régua de cobrança,
+// usuários da equipe Cestacorp.
+// Dados flexíveis (formulários) ficam no MongoDB.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// USUÁRIOS (equipe Cestacorp)
+// =========================
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          UserRole @default(OPERADOR)
+  active        Boolean  @default(true)
+  // Perfil
+  cargo         String?  // ex: "Contador Sênior", "Gerente Fiscal"
+  telefone      String?
+  avatarUrl     String?
+  // Integrações
+  icsToken      String?  @unique
+  // Auditoria de acesso
+  ultimoLogin   DateTime?
+  ultimoLoginIp String?
+  loginFailures Int      @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  GESTOR
+  OPERADOR
+}
+
+// =========================
+// CLIENTE (base V106)
+// =========================
+model Cliente {
+  id        String  @id @default(cuid())
+  codigo    Int?    @unique // CÓD da V106
+  razaoSocial String
+  nomeFantasia String?
+  cpfCnpj   String  @unique
+  tipoPessoa TipoPessoa @default(JURIDICA)
+
+  // Classificação
+  classificacao    Classificacao? // BRONZE / PRATA / OURO / TOP
+  rentabilidade    String?        // BAIXO / MÉDIO / ALTO
+  risco            String?
+  tributacao       String?
+  avaliacaoGoogle  Boolean @default(false)
+  faturamento      String?  // "Fat Interno / NF pelo Cliente via Sistema"
+  prefeitura       String?
+  vendaCartao      Boolean @default(false)
+
+  // Fluxos e responsáveis
+  fluxoFiscal      String?
+  respFiscal       String?
+  folha            String?  // tipo folha: "Básica", "FIXA", etc.
+  respFolha        String?
+  contabil         String?
+  respContabil     String?
+
+  status           StatusCliente @default(ATIVO)
+  inicio           DateTime?     // entrada na Cestacorp
+  dataConstituicao DateTime?     // abertura da empresa (aniversário da empresa)
+  chaveInicio      String?       // "10_2018"
+  meioCaptacao     String?       // Indicação, marketing, etc.
+  indicacao        String?
+  amigo            String?
+
+  // WhatsApp / Digisac
+  whatsappGrupoId  String?       // ID do grupo no Digisac (cliente fala via grupo)
+  whatsappGrupoNome String?
+
+  // Reajuste
+  mesAniversarioReajuste Int?    // 1..12 (mês aniversário do contrato)
+  indiceReajuste         IndiceReajuste? @default(IPCA)
+  ultimoReajuste         DateTime?
+
+  // Contatos
+  emails     ContatoEmail[]
+  telefones  ContatoTelefone[]
+  endereco   Json?
+
+  // Relacionamentos
+  socios           Socio[]
+  contratos        Contrato[]
+  honorarios       Honorario[]
+  cobrancas        Cobranca[]
+  execucoesRegua   ExecucaoRegua[]
+  tags             ClienteTag[]
+  observacoes      ClienteObservacao[]
+  obrigacoes       Obrigacao[]
+  eventosAgenda    EventoAgenda[]
+  acessos          ClienteAcesso[]
+  notasFiscais     NotaFiscal[]
+  preCadastro      PreCadastro?
+  solicitacoesExclusao SolicitacaoExclusaoLgpd[]
+
+  // IDs externos (integrações)
+  niboCustomerId    String?
+  digisacContactId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([razaoSocial])
+  @@index([status])
+  @@map("clientes")
+}
+
+enum TipoPessoa {
+  FISICA
+  JURIDICA
+  MEI
+}
+
+enum Classificacao {
+  BRONZE
+  PRATA
+  OURO
+  TOP
+}
+
+enum StatusCliente {
+  ATIVO
+  INATIVO
+  ENCERRADO
+  PROSPECT
+  SUSPENSO
+}
+
+enum IndiceReajuste {
+  IPCA
+  IGPM
+  INPC
+  FIXO // valor definido no contrato
+  CUSTOM // resolvido via IndiceCustomizado.slug
+}
+
+/// Configuração global de cobrança (juros e multa de atraso).
+/// Patrick (28/04): "1% de juro ao dia e 2% de multa, padrão pra todo mundo".
+/// Single-row: usar sempre id="default" via upsert.
+model ConfigCobranca {
+  id              String   @id @default("default")
+  jurosPctAoDia   Decimal  @default(1.0) @db.Decimal(6, 4)   // % por dia de atraso
+  multaPct        Decimal  @default(2.0) @db.Decimal(6, 4)   // % fixo de multa
+  /// Carência: dias corridos (sáb/dom contam) após vencimento, antes de cobrar juros.
+  /// Cestacorp (Patrick 09/05): D+3 dias corridos.
+  carenciaDias    Int      @default(3)
+  jurosCompostos  Boolean  @default(false)                    // false = juros simples (padrão)
+  ativo           Boolean  @default(true)
+  atualizadoEm    DateTime @updatedAt
+  atualizadoPor   String?  // userId
+  @@map("config_cobranca")
+}
+
+/// Índices de reajuste customizados criados pela Cestacorp.
+/// Patrick (24/04): "quero liberdade pra criar reajustes específicos"
+model IndiceCustomizado {
+  id          String   @id @default(cuid())
+  slug        String   @unique  // "ipca-cheio-2025", "fixo-5-pct"
+  nome        String              // "IPCA cheio 2025"
+  descricao   String?
+  /// Tipo: "fixo" (aplica valorFixo direto) | "tabela" (último valor de valoresMensais)
+  tipo        String              // "fixo" | "tabela"
+  valorFixo   Decimal? @db.Decimal(8, 4)  // ex: 5.0 = 5%
+  valoresMensais Json?            // [{ ano: 2025, mes: 1, valor: 4.5 }, ...]
+  fonte       String?             // "IBGE", "FGV", "Cestacorp"
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@map("indices_customizados")
+}
+
+// =========================
+// PRÉ-CADASTRO (fluxo comercial)
+// =========================
+/// Quando o comercial fecha venda mas a empresa ainda não foi aberta,
+/// criamos um pré-cadastro com o mínimo de dados conhecidos.
+/// Quando a Receita Federal aprova a empresa, o pré-cadastro vira Cliente
+/// via botão "Virar empresa" (preserva código sequencial e dados preenchidos).
+model PreCadastro {
+  id           String   @id @default(cuid())
+  codigo       Int?     @unique  // código reservado (mesmo que do Cliente quando virar)
+
+  // Dados conhecidos no fechamento
+  nomeContato  String              // "Paulo Vitor"
+  emailContato String
+  telefoneContato String?
+  cpfContato   String?
+
+  // Empresa em constituição (parcial)
+  nomeEmpresaPretendido String?    // "TechNova"
+  cnpj         String?              // preenchido depois que abrir
+  regimePretendido String?          // "Simples Nacional", "Lucro Presumido"
+  segmento     String?              // "Tecnologia", "Advocacia"
+  categoria    String?              // "Contabilidade", "MEI Padrão"
+
+  // Comercial
+  responsavelComercial String?
+  honorarioContabil    Decimal? @db.Decimal(14, 2)
+  honorarioFolha       Decimal? @db.Decimal(14, 2)
+  honorarioFiscal      Decimal? @db.Decimal(14, 2)
+  observacoes          String? @db.Text
+
+  // Operação
+  temFolha     Boolean @default(false)
+  temFuncionario Boolean @default(false)
+  temProlabore Boolean @default(true)
+
+  status       StatusPreCadastro @default(PENDENTE)
+  clienteId    String?  @unique  // após virar Cliente, aponta pra ele
+
+  cliente      Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  criadoPor    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([status])
+  @@map("pre_cadastros")
+}
+
+enum StatusPreCadastro {
+  PENDENTE       // comercial criou, aguarda formulários do cliente
+  EM_ABERTURA    // formulários preenchidos, aguardando Receita aprovar
+  VIROU_CLIENTE  // empresa abriu, cadastro virou Cliente
+  DESISTIU       // cliente desistiu da abertura
+}
+
+/// Solicitação de exclusão de dados pelo cliente (LGPD Art. 18 V).
+/// Cliente pede no portal → equipe revisa → aprova ou nega.
+/// Aprovação executa anonimização (não delete físico — preserva auditoria).
+model SolicitacaoExclusaoLgpd {
+  id              String   @id @default(cuid())
+  acessoId        String   // ClienteAcesso que fez o pedido
+  clienteId       String
+  motivo          String?  @db.Text
+  status          StatusExclusaoLgpd @default(PENDENTE)
+  solicitadoEm    DateTime @default(now())
+  revisadoEm      DateTime?
+  revisadoPor     String?  // userId da equipe
+  decisao         String?  @db.Text // justificativa
+  executadoEm     DateTime?
+  cliente         Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  @@index([clienteId])
+  @@index([status])
+  @@map("solicitacoes_exclusao_lgpd")
+}
+
+enum StatusExclusaoLgpd {
+  PENDENTE
+  APROVADA       // equipe aprovou, aguardando execução
+  NEGADA         // equipe negou (com justificativa)
+  EXECUTADA      // anonimização concluída
+}
+
+model ContatoEmail {
+  id        String  @id @default(cuid())
+  clienteId String
+  email     String
+  principal Boolean @default(false)
+  tipo      String? // financeiro, fiscal, contábil
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  @@map("cliente_emails")
+}
+
+model ContatoTelefone {
+  id        String  @id @default(cuid())
+  clienteId String
+  numero    String
+  whatsapp  Boolean @default(true)
+  principal Boolean @default(false)
+  tipo      String?
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  @@map("cliente_telefones")
+}
+
+model Socio {
+  id        String  @id @default(cuid())
+  clienteId String
+  nome      String
+  cpf       String
+  email     String?
+  telefone  String?
+  profissao String?
+  naturalidade String?
+  estadoCivil String?
+  regimeBens  String?
+  pis         String?
+  quotas      Decimal? @db.Decimal(14, 2)
+  representanteLegal Boolean @default(false)
+  assinante         Boolean @default(false)  // assina contratos do cliente
+  dataNascimento    DateTime?                 // aniversário do sócio
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  @@map("socios")
+}
+
+// =========================
+// TAGS (Hublx/Digisac)
+// =========================
+model Tag {
+  id         String       @id @default(cuid())
+  nome       String       @unique
+  slug       String       @unique
+  cor        String?      @default("#84CC16")
+  descricao  String?
+  origem     String?
+  externoId  String?
+  categoria  TagCategoria @default(GERAL)
+  ordem      Int          @default(0)
+  clientes   ClienteTag[]
+  textos     TagTexto[]
+  regras     RegraTag[]
+  createdAt  DateTime     @default(now())
+  @@index([categoria])
+  @@map("tags")
+}
+
+/// Categoriza tags pra filtros granulares na agenda, régua e relatórios.
+/// Patrick (24/04/2026): "DAS dia 20 só Simples Nacional, INSS só quem tem folha".
+enum TagCategoria {
+  GERAL                  // tag livre sem categoria fixa
+  REGIME                 // Simples Nacional, Lucro Presumido, MEI, Carnê-Leão, Doméstico
+  FOLHA                  // Folha com funcionário, Folha pró-labore, Folha doméstica
+  SEGMENTO               // Tecnologia, Advocacia, Indústria, etc.
+  MUNICIPIO              // Porto Alegre, São Paulo (tributos municipais)
+  CLASSIFICACAO          // Bronze, Prata, Ouro, Top
+  HONORARIO              // Vencimento dia 5/10/15/20/25
+  SERVICO                // Cliente de gestão de agenda, cobrança, contratos
+  OPERACIONAL            // Cliente emite suas notas, parcelamento, etc.
+}
+
+model ClienteTag {
+  clienteId String
+  tagId     String
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@id([clienteId, tagId])
+  @@map("cliente_tags")
+}
+
+model TagTexto {
+  id    String @id @default(cuid())
+  tagId String
+  titulo String
+  texto  String @db.Text
+  canal  String? // whatsapp, email
+  tag    Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@map("tag_textos")
+}
+
+/// Regras que aplicam/removem tags automaticamente com base em condições.
+model RegraTag {
+  id              String   @id @default(cuid())
+  tagId           String
+  nome            String
+  descricao       String?
+  condicao        ConditionType
+  params          Json?
+  acao            RegraAcao @default(APLICAR)
+  ativa           Boolean  @default(true)
+  ultimaExecucao  DateTime?
+  totalAplicacoes Int      @default(0)
+  tag             Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([ativa])
+  @@map("regras_tag")
+}
+
+enum ConditionType {
+  COBRANCA_ATRASADA_DIAS
+  PAGO_MESES_SEGUIDOS
+  SEM_COBRANCA_ABERTA
+  MES_ANIVERSARIO
+  TRIBUTACAO_CONTAINS
+  CLASSIFICACAO
+  STATUS
+}
+
+enum RegraAcao {
+  APLICAR
+  REMOVER
+}
+
+// =========================
+// CONTRATO
+// =========================
+model Contrato {
+  id            String   @id @default(cuid())
+  clienteId     String
+  numero        String?  @unique
+  tipo          String
+  status        StatusContrato @default(RASCUNHO)
+  dataAssinatura DateTime?
+  dataVigenciaInicio DateTime?
+  dataVigenciaFim    DateTime?
+  diaVencimento      Int?
+  valorHonorarios    Decimal @default(0) @db.Decimal(14, 2)
+  adicionalAnual     Decimal? @db.Decimal(14, 2)
+  indiceReajuste     IndiceReajuste @default(IPCA)
+  mesAniversario     Int?
+  objeto             String? @db.Text
+  pdfPath            String?
+  docxPath           String?
+  templateId         String?
+  // Assinatura digital (Autentique/ClickSign)
+  assinaturaStatus   AssinaturaStatus @default(NAO_ENVIADO)
+  assinaturaProvider String?  // "autentique" | "clicksign" | "mock"
+  assinaturaDocId    String?  // id do documento no provider
+  assinaturaUrl      String?  // URL pro cliente assinar
+  assinaturaEnviadoEm DateTime?
+  assinaturaAssinadoEm DateTime?
+  assinaturaAssinantes Json?  // array de { nome, cpf, email, assinouEm, status }
+  // Cláusula extra negociada pelo comercial (ex: desconto especial, condição custom)
+  clausulaComplementar String? @db.Text
+  // Anexos aplicados a este contrato (LGPD, NDA, etc.)
+  anexos    ContratoAnexoVinculo[]
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  template  ContratoTemplate? @relation(fields: [templateId], references: [id])
+  honorarios Honorario[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([clienteId])
+  @@map("contratos")
+}
+
+enum StatusContrato {
+  RASCUNHO
+  EMITIDO
+  ASSINADO
+  ENCERRADO
+  CANCELADO
+}
+
+enum AssinaturaStatus {
+  NAO_ENVIADO
+  AGUARDANDO
+  ASSINADO
+  RECUSADO
+  EXPIRADO
+}
+
+model ContratoTemplate {
+  id         String   @id @default(cuid())
+  nome       String   @unique
+  tipo       String
+  arquivoDocx String  // caminho do .docx com placeholders {cliente}, {cnpj}...
+  placeholders Json?
+  ativo      Boolean  @default(true)
+  /// Marcar como template padrão LGPD para geração em lote
+  lgpdAtual  Boolean  @default(false)
+  versao     String?  // "v2024.1", "v2026-LGPD"
+  contratos  Contrato[]
+  createdAt  DateTime @default(now())
+  @@map("contrato_templates")
+}
+
+/// Anexo de contrato (LGPD, NDA, regra fiscal especial, etc.)
+/// Armazenado como template separado e vinculado on-demand a contratos.
+model ContratoAnexo {
+  id            String   @id @default(cuid())
+  nome          String   @unique  // "Anexo LGPD 2026", "NDA Comercial"
+  descricao     String?  @db.Text
+  arquivoDocx   String              // caminho do .docx
+  ordem         Int      @default(0)
+  ativo         Boolean  @default(true)
+  // Auto-aplicar quando o cliente tiver alguma destas tags (categoria/slug)
+  autoAplicarTags String[]   @default([])
+  contratos     ContratoAnexoVinculo[]
+  createdAt     DateTime @default(now())
+  @@map("contrato_anexos")
+}
+
+/// Tabela de relação Contrato ↔ Anexo (muitos pra muitos com metadados)
+model ContratoAnexoVinculo {
+  id          String   @id @default(cuid())
+  contratoId  String
+  anexoId     String
+  ordem       Int      @default(0)
+  contrato    Contrato      @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  anexo       ContratoAnexo @relation(fields: [anexoId], references: [id], onDelete: Cascade)
+  @@unique([contratoId, anexoId])
+  @@map("contrato_anexo_vinculos")
+}
+
+// =========================
+// HONORÁRIOS (parcelas)
+// =========================
+model Honorario {
+  id          String   @id @default(cuid())
+  clienteId   String
+  contratoId  String?
+  competencia String   // "2026-04"
+  valor       Decimal  @db.Decimal(14, 2)
+  vencimento  DateTime
+  status      StatusHonorario @default(ABERTO)
+  niboScheduleId String? // id do agendamento no NIBO
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  contrato  Contrato? @relation(fields: [contratoId], references: [id])
+  cobrancas Cobranca[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([clienteId, competencia])
+  @@index([status, vencimento])
+  @@map("honorarios")
+}
+
+enum StatusHonorario {
+  ABERTO
+  PAGO
+  ATRASADO
+  CANCELADO
+  RENEGOCIADO
+}
+
+// =========================
+// COBRANÇA (boletos do NIBO)
+// =========================
+model Cobranca {
+  id           String   @id @default(cuid())
+  clienteId    String
+  honorarioId  String?
+  niboDebitId  String?  @unique // id da conta a receber no NIBO
+  descricao    String?
+  valor        Decimal  @db.Decimal(14, 2)
+  vencimento   DateTime
+  dataPagamento DateTime?
+  linhaDigitavel String?
+  urlBoleto     String?
+  pixCopiaCola  String?
+  status        StatusCobranca @default(ABERTO)
+  /// Snapshot da regra de juros/multa vigente no momento em que a cobrança foi gerada.
+  /// Patrick (09/05) decidiu: mudança de regra é prospectiva — cobranças antigas mantêm a regra original.
+  /// Estrutura: { jurosPctAoDia, multaPct, carenciaDias, jurosCompostos, capturadoEm }
+  regraJurosSnapshot Json?
+  cliente       Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  honorario     Honorario? @relation(fields: [honorarioId], references: [id])
+  execucoes     ExecucaoRegua[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([status, vencimento])
+  @@map("cobrancas")
+}
+
+enum StatusCobranca {
+  ABERTO
+  PAGO
+  ATRASADO
+  CANCELADO
+  PARCIAL
+}
+
+// =========================
+// RÉGUA DE COBRANÇA
+// =========================
+model ReguaCobranca {
+  id          String   @id @default(cuid())
+  nome        String
+  descricao   String?
+  ativa       Boolean  @default(true)
+  passos      ReguaPasso[]
+  execucoes   ExecucaoRegua[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@map("reguas_cobranca")
+}
+
+model ReguaPasso {
+  id             String   @id @default(cuid())
+  reguaId        String
+  ordem          Int
+  nome           String
+  offsetDias     Int
+  canal          CanalEnvio
+  templateMsg    String   @db.Text
+  // A/B testing — quando setado, sistema alterna entre templateMsg (A) e os demais (B, C...)
+  templateVariantes Json?
+  horarioEnvio   String?  @default("09:00")
+  soDiasUteis    Boolean  @default(true)
+  regua          ReguaCobranca @relation(fields: [reguaId], references: [id], onDelete: Cascade)
+  execucoes      ExecucaoRegua[]
+  @@unique([reguaId, ordem])
+  @@map("regua_passos")
+}
+
+enum CanalEnvio {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+model ExecucaoRegua {
+  id          String   @id @default(cuid())
+  reguaId     String
+  passoId     String
+  clienteId   String
+  cobrancaId  String?
+  status      StatusExecucao @default(PENDENTE)
+  agendadoPara DateTime
+  enviadoEm   DateTime?
+  erro        String?  @db.Text
+  mensagemFinal String? @db.Text
+  digisacMessageId String?
+  // Histórico completo de tentativas; push novo ao reenviar
+  tentativas  Json?
+  // Índice da variante usada no A/B (0 = templateMsg original, 1+ = variantes)
+  varianteUsada Int?
+  regua    ReguaCobranca @relation(fields: [reguaId], references: [id])
+  passo    ReguaPasso @relation(fields: [passoId], references: [id])
+  cliente  Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cobranca Cobranca? @relation(fields: [cobrancaId], references: [id])
+  createdAt DateTime @default(now())
+  @@index([status, agendadoPara])
+  @@unique([reguaId, passoId, cobrancaId, clienteId], name: "uniq_execucao")
+  @@map("execucoes_regua")
+}
+
+enum StatusExecucao {
+  PENDENTE
+  ENVIADO
+  ERRO
+  CANCELADO
+  PULADO // cliente pagou antes do envio
+}
+
+// =========================
+// NOTAS FISCAIS (import XML)
+// =========================
+model NotaFiscal {
+  id            String   @id @default(cuid())
+  clienteId     String?
+  chave         String   @unique
+  numero        String
+  serie         String?
+  tipo          String
+  modelo        String?
+  dataEmissao   DateTime
+  dataSaida     DateTime?
+  emitenteCnpj  String
+  emitenteNome  String
+  destCnpjCpf   String?
+  destNome      String?
+  valorTotal    Decimal  @db.Decimal(14, 2)
+  valorProdutos Decimal? @db.Decimal(14, 2)
+  valorFrete    Decimal? @db.Decimal(14, 2)
+  valorDesconto Decimal? @db.Decimal(14, 2)
+  valorIcms     Decimal? @db.Decimal(14, 2)
+  valorIpi      Decimal? @db.Decimal(14, 2)
+  valorPis      Decimal? @db.Decimal(14, 2)
+  valorCofins   Decimal? @db.Decimal(14, 2)
+  naturezaOp    String?
+  cfop          String?
+  xmlPath       String?
+  importadoEm   DateTime @default(now())
+  importadoPor  String?
+  itens         NotaFiscalItem[]
+  cliente       Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  @@index([clienteId, dataEmissao])
+  @@index([emitenteCnpj])
+  @@index([destCnpjCpf])
+  @@map("notas_fiscais")
+}
+
+model NotaFiscalItem {
+  id          String   @id @default(cuid())
+  notaId      String
+  ordem       Int
+  codigo      String?
+  descricao   String   @db.Text
+  cfop        String?
+  ncm         String?
+  quantidade  Decimal  @db.Decimal(14, 4)
+  unidade     String?
+  valorUnit   Decimal  @db.Decimal(14, 6)
+  valorTotal  Decimal  @db.Decimal(14, 2)
+  valorIcms   Decimal? @db.Decimal(14, 2)
+  nota        NotaFiscal @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  @@unique([notaId, ordem])
+  @@map("notas_fiscais_itens")
+}
+
+model ClienteObservacao {
+  id        String @id @default(cuid())
+  clienteId String
+  autor     String
+  conteudo  String @db.Text
+  pinned    Boolean @default(false)
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@map("cliente_observacoes")
+}
+
+// =========================
+// PORTAL DO CLIENTE
+// =========================
+/// Log de auditoria — quem fez o quê, quando
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorType  String   // "equipe" | "cliente" | "system"
+  actorEmail String?
+  action     String   // "cliente.update", "reajuste.aplicar", "execucao.reenviar"...
+  resource   String   // "cliente" | "contrato" | "execucao_regua" | ...
+  resourceId String?
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([resource, resourceId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ClienteAcesso {
+  id                   String   @id @default(cuid())
+  clienteId            String
+  email                String   @unique
+  nome                 String
+  password             String?
+  ativo                Boolean  @default(true)
+  tokenConvite         String?  @unique
+  tokenConviteExpira   DateTime?
+  tokenReset           String?  @unique
+  tokenResetExpira     DateTime?
+  ultimoAcesso         DateTime?
+  cliente              Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  @@index([clienteId])
+  @@map("cliente_acessos")
+}
+
+// =========================
+// AGENDA / OBRIGAÇÕES FISCAIS
+// =========================
+// Obrigacao = modelo/recorrência (ex.: DAS mensal, DEFIS anual)
+// Evento = instância calculada em uma data específica (ex.: "DAS de 04/2026")
+model Obrigacao {
+  id          String   @id @default(cuid())
+  nome        String
+  tipo        TipoObrigacao
+  descricao   String?  @db.Text
+  recorrencia Recorrencia   @default(MENSAL)
+  diaVencimento Int?         // para MENSAL (dia do mês)
+  mesVencimento Int?         // para ANUAL (1..12)
+  diaVencimentoAnual Int?    // para ANUAL (dia dentro do mês)
+  dataUnica      DateTime?   // para UNICA
+  antecedenciaDias Int       @default(7) // gera notificação X dias antes
+  global      Boolean  @default(true)    // se true, aplica a todos os clientes ativos
+  clienteId   String?   // se não-global, amarra a um cliente
+  categoriaCliente Classificacao?  // opcional: só aplica a Bronze/Ouro/etc
+  tributacaoFiltro String?          // opcional: só se tributação contém texto (ex.: "Simples")
+  /// Tags requeridas — só notifica clientes que tenham TODAS estas tags (por slug).
+  /// Ex: ["simples-nacional", "folha-com-funcionario"]
+  tagsRequeridas    String[] @default([])
+  /// Tags excluídas — pula se o cliente tiver QUALQUER uma delas.
+  tagsExcluidas     String[] @default([])
+  responsavel  String?
+  ativa        Boolean @default(true)
+  eventos      EventoAgenda[]
+  cliente      Cliente? @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([ativa, recorrencia])
+  @@map("obrigacoes")
+}
+
+enum TipoObrigacao {
+  DAS
+  DEFIS
+  DIRF
+  IRPF
+  ECF
+  ECD
+  FGTS
+  ESOCIAL
+  DCTF
+  SPED_FISCAL
+  SPED_CONTRIBUICOES
+  REAJUSTE
+  REUNIAO
+  CERTIFICADO_DIGITAL
+  OUTROS
+}
+
+enum Recorrencia {
+  MENSAL
+  ANUAL
+  TRIMESTRAL
+  SEMESTRAL
+  UNICA
+}
+
+model EventoAgenda {
+  id          String   @id @default(cuid())
+  obrigacaoId String?
+  clienteId   String?
+  titulo      String
+  descricao   String? @db.Text
+  dataVencimento DateTime
+  status      StatusEvento @default(PENDENTE)
+  concluidoEm DateTime?
+  concluidoPor String?
+  responsavel String?
+  observacao  String? @db.Text
+  obrigacao   Obrigacao? @relation(fields: [obrigacaoId], references: [id], onDelete: SetNull)
+  cliente     Cliente?   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([obrigacaoId, clienteId, dataVencimento])
+  @@index([dataVencimento, status])
+  @@map("eventos_agenda")
+}
+
+enum StatusEvento {
+  PENDENTE
+  CONCLUIDO
+  ATRASADO
+  ISENTO
+  CANCELADO
+}
