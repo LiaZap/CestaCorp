@@ -6,10 +6,11 @@ export const metadata: Metadata = {
   description: "Plataforma Cestacorp: clientes, contratos, régua de cobrança e formulários.",
   icons: {
     icon: [
-      { url: "/cestacorp-logo.webp", type: "image/webp" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon.png", sizes: "256x256", type: "image/png" },
     ],
-    shortcut: "/cestacorp-logo.webp",
-    apple: "/cestacorp-logo.webp",
+    shortcut: "/favicon-32.png",
+    apple: "/apple-icon.png",
   },
 };
 
