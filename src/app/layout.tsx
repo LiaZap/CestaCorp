@@ -4,6 +4,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Cestacorp — Sistema Interno",
   description: "Plataforma Cestacorp: clientes, contratos, régua de cobrança e formulários.",
+  icons: {
+    icon: [
+      { url: "/cestacorp-logo.webp", type: "image/webp" },
+    ],
+    shortcut: "/cestacorp-logo.webp",
+    apple: "/cestacorp-logo.webp",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
