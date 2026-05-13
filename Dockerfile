@@ -44,6 +44,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+# src/ é necessário pra rodar prisma/seed.ts e scripts/seed-demo.ts no console
+# do EasyPanel. Eles importam de `../src/models/*` e via path alias `@/lib/*`
+# (resolvido pelo tsconfig.json → src/). Sem isso, tsx falha com
+# "Cannot find module '@/lib/db/prisma'".
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 # node_modules completo (necessário pra rodar prisma CLI, tsx, dotenv, seed scripts no console
