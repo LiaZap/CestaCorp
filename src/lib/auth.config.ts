@@ -8,6 +8,9 @@ import type { NextAuthConfig } from "next-auth";
 export const authConfig = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  // EasyPanel/Traefik atrás de proxy reverso — NextAuth v5 exige trustHost: true
+  // pra aceitar o Host header do cliente. Sem isso retorna /api/auth/error.
+  trustHost: true,
   providers: [],
   callbacks: {
     async jwt({ token, user }) {
