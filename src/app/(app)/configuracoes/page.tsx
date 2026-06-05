@@ -80,6 +80,21 @@ export default async function ConfiguracoesPage() {
           </Card>
         </Link>
 
+        <Link href="/configuracoes/webhooks" className="block">
+          <Card className="hover:border-cestacorp-blue/40 transition h-full">
+            <CardContent className="pt-6 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center">
+                <Webhook className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">Saúde dos webhooks</p>
+                <p className="text-xs text-muted-foreground">NIBO / Digisac / Autentique — status, últimos eventos, secrets</p>
+              </div>
+              <span className="text-muted-foreground">→</span>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link href="/configuracoes/cobranca" className="block">
           <Card className="hover:border-cestacorp-blue/40 transition h-full">
             <CardContent className="pt-6 flex items-center gap-4">
@@ -175,7 +190,7 @@ export default async function ConfiguracoesPage() {
         </CardHeader>
         <CardContent className="text-sm space-y-2">
           <p><code>POST /api/cron/regua</code> — diário às 09:00 (sync NIBO + régua + agenda + notificações)</p>
-          <p className="text-xs text-muted-foreground">Header obrigatório: <code>x-cron-secret: $NEXTAUTH_SECRET</code></p>
+          <p className="text-xs text-muted-foreground">Header obrigatório: <code>x-cron-secret: $CRON_SECRET</code> (dedicado — NÃO reusar NEXTAUTH_SECRET)</p>
         </CardContent>
       </Card>
 
