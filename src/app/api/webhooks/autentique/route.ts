@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { sincronizarStatusAutentique } from "@/lib/services/assinatura";
 import { audit } from "@/lib/security/audit";
 import { logger } from "@/lib/logger";
+import { validarWebhook, registrarEvento } from "@/lib/security/webhook-guard";
 
 export const runtime = "nodejs";
 
@@ -27,20 +28,18 @@ export const runtime = "nodejs";
  */
 export async function POST(req: NextRequest) {
   const body = await req.text();
+  const signature = req.headers.get("x-autentique-signature");
 
-  // Validação opcional de assinatura (se Autentique fornecer header)
-  const secret = process.env.AUTENTIQUE_WEBHOOK_SECRET;
-  if (secret) {
-    const sig = req.headers.get("x-autentique-signature");
-    if (sig) {
-      const crypto = await import("node:crypto");
-      const expected = crypto.createHmac("sha256", secret).update(body).digest("hex");
-      if (sig !== expected && sig !== `sha256=${expected}`) {
-        logger.warn("Autentique webhook: assinatura inválida");
-        return NextResponse.json({ error: "invalid signature" }, { status: 401 });
-      }
-    }
-  }
+  // Auditoria seg #4: em produção, exige secret + header. Não silencia mais.
+  const erro = validarWebhook({
+    provider: "autentique",
+    req,
+    rawBody: body,
+    signature,
+    secret: process.env.AUTENTIQUE_WEBHOOK_SECRET,
+    prefixo: "sha256=",
+  });
+  if (erro) return erro;
 
   let payload: any;
   try {
@@ -55,6 +54,18 @@ export async function POST(req: NextRequest) {
   if (!documentId) {
     logger.warn("Autentique webhook sem documentId", { payload });
     return NextResponse.json({ error: "documentId ausente" }, { status: 400 });
+  }
+
+  // Idempotência: Autentique pode reenviar evento de assinatura.
+  const novo = await registrarEvento({
+    provider: "autentique",
+    eventId: `${eventType}:${documentId}`,
+    eventType,
+    payload,
+  });
+  if (!novo) {
+    logger.info("Autentique webhook duplicado, ignorando", { eventType, documentId });
+    return NextResponse.json({ ok: true, duplicado: true });
   }
 
   // Localiza contrato pelo docId

@@ -838,3 +838,23 @@ enum StatusEvento {
   ISENTO
   CANCELADO
 }
+
+// =========================
+// WEBHOOK DEDUP (idempotência)
+// =========================
+/// Registra eventos de webhook recebidos pra prevenir replay.
+/// Auditoria seg #5: sem isso, atacante reenvia evento NIBO de pagamento
+/// e marca cobrança como paga duas vezes (dispara notificação dupla, etc).
+/// Unique constraint (provider, eventId) bloqueia a 2ª inserção.
+/// Recomendado: cron `expurgo` apaga registros > 30 dias.
+model WebhookEvent {
+  id           String   @id @default(cuid())
+  provider     String   // "nibo", "digisac", "autentique"
+  eventId      String
+  eventType    String?  // "payment.received", "message.received", "document.signed", etc.
+  payloadHash  String?  // sha256 do payload, opcional pra correlação
+  processedAt  DateTime @default(now())
+  @@unique([provider, eventId])
+  @@index([processedAt])
+  @@map("webhook_events")
+}

@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rodarExpurgoMensal } from "@/lib/services/expurgo";
+import { verificarCronSecret } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Cron mensal de expurgo. Protegido pelo mesmo x-cron-secret da régua.
+ * Cron mensal de expurgo. Protegido pelo CRON_SECRET dedicado.
  * EasyPanel: agenda `POST /api/cron/expurgo` todo dia 1 às 03:00.
  */
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!secret || secret !== process.env.NEXTAUTH_SECRET) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const erro = verificarCronSecret(req);
+  if (erro) return erro;
   try {
     const resultados = await rodarExpurgoMensal();
     return NextResponse.json({ ok: true, resultados });

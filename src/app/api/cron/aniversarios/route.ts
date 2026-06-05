@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processarAniversariosDoDia } from "@/lib/services/aniversarios";
 import { logger } from "@/lib/logger";
+import { verificarCronSecret } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -9,18 +10,16 @@ export const maxDuration = 300;
  * GET/POST /api/cron/aniversarios
  *
  * Disparo diário (recomendado: 09:00). EasyPanel scheduler:
- *   curl -H "x-cron-secret: $NEXTAUTH_SECRET" https://cestacorp.com.br/api/cron/aniversarios
+ *   curl -H "x-cron-secret: $CRON_SECRET" https://cestacorp.bahflash.tech/api/cron/aniversarios
  *
  * Query params:
  *   ?dry=1   → simula sem enviar (lista quem completaria aniversário hoje)
  *   ?data=2026-08-15 → testa com data específica
  */
 async function handler(req: NextRequest) {
-  // Auth via header secreto (mesma estratégia do /api/cron/regua)
-  const secret = req.headers.get("x-cron-secret");
-  if (secret !== process.env.NEXTAUTH_SECRET) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  // Auth via x-cron-secret dedicado (auditoria seg #8).
+  const erro = verificarCronSecret(req);
+  if (erro) return erro;
 
   const { searchParams } = new URL(req.url);
   const dryRun = searchParams.get("dry") === "1";

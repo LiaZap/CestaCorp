@@ -1,22 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { connectMongo } from "@/lib/db/mongo";
+import { verificarCronSecret } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Endpoint público de health check.
- * - GET /api/health       → liveness simples (app rodando)
- * - GET /api/health?deep=1 → readiness (DB + Mongo + envs críticas)
+ * Endpoint de health check.
+ * - GET /api/health       → liveness simples (público, EasyPanel usa pra restart)
+ * - GET /api/health?deep=1 → readiness detalhada (PRIVADO — exige x-cron-secret)
  *
- * Retorna 200 se tudo ok, 503 se algo quebrou.
- * EasyPanel/Kubernetes usam isso pra decidir se reinicia o container.
+ * Auditoria seg #19: deep=1 antes vazava versão do Node + envs configuradas
+ * (reconnaissance pra atacante). Agora exige header `x-cron-secret`.
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const deep = url.searchParams.get("deep") === "1";
   const started = Date.now();
+
+  if (deep) {
+    const erro = verificarCronSecret(req);
+    if (erro) return erro;
+  }
 
   const base = {
     ok: true,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db/mongo";
 import { MessageLogModel } from "@/models/MessageLog";
 import { extrairEventoWebhook, enviarMensagem } from "@/lib/services/digisac";
-import { verificarHmac } from "@/lib/security/webhook-hmac";
+import { validarWebhook, registrarEvento } from "@/lib/security/webhook-guard";
 import { responderCliente } from "@/lib/services/chatbot";
 import { notificar } from "@/lib/services/notifications";
 import { prisma } from "@/lib/db/prisma";
@@ -11,23 +11,45 @@ export const runtime = "nodejs";
 
 /**
  * Webhook DIGISAC — mensagens recebidas + atualizações de status.
- * Validação HMAC SHA256 (DIGISAC_WEBHOOK_SECRET).
+ * Validação HMAC SHA256 (DIGISAC_WEBHOOK_SECRET) + idempotência.
  */
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
-  const signature = req.headers.get("x-digisac-signature") || req.headers.get("x-hub-signature-256") || req.headers.get("x-signature");
-  const ok = verificarHmac({
-    body: rawBody,
+  const signature =
+    req.headers.get("x-digisac-signature") ||
+    req.headers.get("x-hub-signature-256") ||
+    req.headers.get("x-signature");
+
+  const erro = validarWebhook({
+    provider: "digisac",
+    req,
+    rawBody,
     signature,
     secret: process.env.DIGISAC_WEBHOOK_SECRET,
-    permitirSemSecret: process.env.NODE_ENV !== "production",
     prefixo: "sha256=",
   });
-  if (!ok) return NextResponse.json({ error: "assinatura inválida" }, { status: 401 });
+  if (erro) return erro;
 
   try {
     const body = JSON.parse(rawBody);
     const evento = extrairEventoWebhook(body);
+
+    // Idempotência: Digisac reenvia ack em caso de timeout.
+    const msgIdRoot =
+      evento?.payload?.data?.id ||
+      evento?.payload?.messageId ||
+      evento?.payload?.id ||
+      body?.id;
+    if (msgIdRoot) {
+      const novo = await registrarEvento({
+        provider: "digisac",
+        eventId: `${evento?.tipo ?? "evt"}:${msgIdRoot}`,
+        eventType: evento?.tipo,
+        payload: body,
+      });
+      if (!novo) return NextResponse.json({ ok: true, duplicado: true });
+    }
+
     await connectMongo();
 
     if (evento.tipo === "message") {

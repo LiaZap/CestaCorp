@@ -30,14 +30,21 @@ export async function enviarEmail(params: SendEmailParams): Promise<{ id: string
     return { id: `sim-${Date.now()}`, simulated: true };
   }
 
+  // Aceita SMTP_PASS OU SMTP_PASSWORD (alias) — docker-compose histórico usava
+  // SMTP_PASSWORD mas o codigo tradicional do nodemailer é SMTP_PASS.
+  const smtpPass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
   const transporter = nodemailer.createTransport({
     host,
     port: Number(process.env.SMTP_PORT ?? 587),
     secure: process.env.SMTP_SECURE === "true",
     auth: process.env.SMTP_USER
-      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      ? { user: process.env.SMTP_USER, pass: smtpPass }
       : undefined,
   });
+
+  if (process.env.SMTP_USER && !smtpPass) {
+    console.warn("[email] SMTP_USER definido mas senha vazia — autenticação vai falhar. Verifique SMTP_PASS/SMTP_PASSWORD.");
+  }
 
   const info = await transporter.sendMail({
     from,

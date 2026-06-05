@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { assertEquipe, AuthorizationError } from "@/lib/security/ownership";
+import { audit } from "@/lib/security/audit";
 import { prisma } from "@/lib/db/prisma";
 import { connectMongo } from "@/lib/db/mongo";
 import { MessageLogModel } from "@/models/MessageLog";
@@ -8,10 +10,15 @@ import { enviarMensagem, upsertContato } from "@/lib/services/digisac";
 /**
  * Dispara uma mensagem ad-hoc de cobrança (sem passar pela régua).
  * Útil quando o operador quer mandar um lembrete pontual.
+ *
+ * SEGURANÇA (seg #6): apenas equipe — cliente do portal não pode disparar
+ * envio de WhatsApp em nome da Cestacorp pra qualquer cobrança.
  */
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  try { assertEquipe(session); }
+  catch (e) { return NextResponse.json({ error: (e as AuthorizationError).message }, { status: 403 }); }
 
   const cobranca = await prisma.cobranca.findUnique({
     where: { id: params.id },
@@ -49,12 +56,21 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       providerPayload: envio,
       status: "ENVIADO",
     });
+
+    await audit({
+      session,
+      action: "cobranca.enviar-agora",
+      resource: "cobranca",
+      resourceId: cobranca.id,
+      after: { para: tel.numero, valor: Number(cobranca.valor) },
+      request: req,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
   }
 
   return NextResponse.redirect(
-    new URL(`/cobrancas/${params.id}?sent=1`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/cobrancas/${params.id}?sent=1`, req.nextUrl.origin),
     303
   );
 }

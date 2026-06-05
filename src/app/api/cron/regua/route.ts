@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rodarReguaDiaria } from "@/lib/services/regua-cobranca";
+import { verificarCronSecret } from "@/lib/security/cron-auth";
 
 /**
  * Endpoint para disparar a régua de cobrança.
- * Proteção: header `x-cron-secret` = NEXTAUTH_SECRET (ou secret dedicado).
- * EasyPanel agenda um HTTP call diário para este endpoint.
+ * Proteção: header `x-cron-secret` = CRON_SECRET (dedicado, não compartilha
+ * mais com NEXTAUTH_SECRET — auditoria seg #8). EasyPanel agenda HTTP call
+ * diário para este endpoint.
  */
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!secret || secret !== process.env.NEXTAUTH_SECRET) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const erro = verificarCronSecret(req);
+  if (erro) return erro;
   try {
     const resultado = await rodarReguaDiaria();
     return NextResponse.json({ ok: true, resultado });
