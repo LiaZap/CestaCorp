@@ -98,9 +98,19 @@ model Cliente {
   ultimoReajuste         DateTime?
 
   // Contatos
-  emails    ContatoEmail[]
-  telefones ContatoTelefone[]
-  endereco  Json?
+  emails              ContatoEmail[]
+  telefones           ContatoTelefone[]
+  // Endereço — `endereco` Json mantido pra compat retroativa com importação V106.
+  // Os campos abaixo são a versão estruturada usada pelo gerador de contrato
+  // (mail merge limpo, #27). Quando ambos existem, os estruturados ganham.
+  endereco            Json?
+  enderecoLogradouro  String?
+  enderecoNumero      String?
+  enderecoComplemento String?
+  enderecoBairro      String?
+  enderecoMunicipio   String?
+  enderecoUf          String?           @db.VarChar(2)
+  enderecoCep         String?
 
   // Relacionamentos
   socios               Socio[]
@@ -523,22 +533,50 @@ enum AssinaturaStatus {
 }
 
 model ContratoTemplate {
-  id           String     @id @default(cuid())
-  nome         String     @unique
-  tipo         String
-  arquivoDocx  String // caminho do .docx com placeholders {cliente}, {cnpj}...
-  placeholders Json?
-  ativo        Boolean    @default(true)
+  id             String        @id @default(cuid())
+  nome           String        @unique
+  /// Tipo legado (string livre): "Prestação de Serviço", "Aditivo", etc.
+  /// Mantido pra compat. Pra UI gerenciada, use tipoContratoId (#16 — Patrick
+  /// chat 13/06: queria cadastrar "Aditivo" sem alterar código).
+  tipo           String
+  tipoContratoId String?
+  tipoContrato   TipoContrato? @relation(fields: [tipoContratoId], references: [id])
+  arquivoDocx    String // caminho do .docx com placeholders {cliente}, {cnpj}...
+  placeholders   Json?
+  ativo          Boolean       @default(true)
   /// Marcar como template padrão LGPD para geração em lote
-  lgpdAtual    Boolean    @default(false)
-  versao       String? // "v2024.1", "v2026-LGPD"
-  contratos    Contrato[]
-  createdAt    DateTime   @default(now())
+  lgpdAtual      Boolean       @default(false)
+  versao         String? // "v2024.1", "v2026-LGPD"
+  contratos      Contrato[]
+  createdAt      DateTime      @default(now())
 
   deletedAt DateTime?
 
   @@index([deletedAt])
+  @@index([tipoContratoId])
   @@map("contrato_templates")
+}
+
+/// Catálogo de tipos de contrato gerenciável via UI (#16).
+/// Patrick (call 24/04 + chat 13/06): "queria cadastrar Aditivo como tipo".
+/// Hoje o campo `Contrato.tipo`/`ContratoTemplate.tipo` é string livre — esse
+/// model dá um cadastro estruturado. Os templates existentes continuam
+/// funcionando com string; novos usam a FK pra padronização.
+model TipoContrato {
+  id            String             @id @default(cuid())
+  slug          String             @unique // "prestacao-servico", "aditivo", "encerramento"
+  nome          String // "Prestação de Serviço", "Aditivo Contratual"
+  descricao     String?            @db.Text
+  ativo         Boolean            @default(true)
+  ordem         Int                @default(0)
+  /// Se true, exige um campo de "contratoOriginalId" no Contrato gerado
+  /// (Aditivos sempre referenciam outro contrato).
+  exigeOriginal Boolean            @default(false)
+  templates     ContratoTemplate[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@map("tipos_contrato")
 }
 
 /// Anexo de contrato (LGPD, NDA, regra fiscal especial, etc.)

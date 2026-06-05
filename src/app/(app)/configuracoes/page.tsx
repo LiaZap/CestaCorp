@@ -65,6 +65,21 @@ export default async function ConfiguracoesPage() {
           </Card>
         </Link>
 
+        <Link href="/configuracoes/tipos-contrato" className="block">
+          <Card className="hover:border-cestacorp-blue/40 transition h-full">
+            <CardContent className="pt-6 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-md bg-cestacorp-blue/10 text-cestacorp-blue flex items-center justify-center">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">Tipos de contrato</p>
+                <p className="text-xs text-muted-foreground">Cadastrar Aditivo, Encerramento, etc. (Patrick 13/06)</p>
+              </div>
+              <span className="text-muted-foreground">→</span>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link href="/configuracoes/cobranca" className="block">
           <Card className="hover:border-cestacorp-blue/40 transition h-full">
             <CardContent className="pt-6 flex items-center gap-4">
