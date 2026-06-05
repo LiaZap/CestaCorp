@@ -15,6 +15,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db/prisma";
 import { isDocumentoValido } from "@/lib/security/documento";
 import { logger } from "@/lib/logger";
+import { importarV106Extras } from "./v106-importer-extra";
 
 export interface AbaResult {
   aba: string;
@@ -437,6 +438,10 @@ export async function importarV106Completo(buffer: Buffer): Promise<AbaResult[]>
 
   logger.info("V-106: importando ANIVERSARIANTES…");
   resultados.push(await importarAniversariantes(wb));
+
+  // Abas extras (mensagens, indicações, agendas, endereços, etc.)
+  const extras = await importarV106Extras(wb);
+  resultados.push(...extras);
 
   return resultados;
 }
