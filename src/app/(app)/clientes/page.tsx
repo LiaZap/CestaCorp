@@ -146,7 +146,13 @@ export default async function ClientesPage({
                 const qtdAtrasadas = inadimplenciaMap.get(c.id) ?? 0;
                 return (
                   <tr key={c.id} className="border-b last:border-0 hover:bg-muted/50">
-                    <td className="py-2 pr-3 tabular-nums">{c.codigo ?? "—"}</td>
+                    <td className="py-2 pr-3 tabular-nums font-mono">
+                      {c.codigo != null ? (
+                        <Link href={`/clientes/${c.id}`} className="text-cestacorp-blue hover:underline">
+                          #{c.codigo}
+                        </Link>
+                      ) : "—"}
+                    </td>
                     <td className="py-2 pr-3">
                       <span className="flex items-center gap-2">
                         <BolinhaAtraso qtd={qtdAtrasadas} />

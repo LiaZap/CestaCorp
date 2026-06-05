@@ -11,6 +11,7 @@ import { getTimeline } from "@/lib/services/cliente-timeline";
 import { ClienteTimeline } from "@/components/ClienteTimeline";
 import { ConvidarClienteCard } from "@/components/ConvidarClienteCard";
 import { SociosCard } from "./SociosCard";
+import { ExcluirClienteButton } from "./ExcluirClienteButton";
 import { calcularValorAtualizadoLote } from "@/lib/services/valor-atualizado";
 import { CardValorConsolidado } from "@/components/CardValorConsolidado";
 import { BannerInadimplencia, BolinhaAtraso } from "@/components/BolinhaAtraso";
@@ -130,6 +131,7 @@ export default async function ClienteDetalhePage({ params }: { params: { id: str
               <FileText className="h-4 w-4" /> Gerar contrato
             </Link>
           </Button>
+          <ExcluirClienteButton clienteId={cliente.id} razaoSocial={cliente.razaoSocial} />
         </div>
       </div>
 

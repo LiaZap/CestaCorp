@@ -14,11 +14,11 @@
  *  - Botão "Limpar tudo" remove todos.
  */
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronDown, ChevronUp, X, Star, Bookmark } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, X, Star, Bookmark, CornerDownLeft } from "lucide-react";
 
 interface Opcoes {
   tributacoes: string[];
@@ -149,15 +149,11 @@ export function FiltrosClientes({ valores, opcoes }: { valores: Valores; opcoes:
         onSubmit={(e) => { e.preventDefault(); aplicar(); }}
         className="flex gap-2 flex-wrap items-center"
       >
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={v.q}
-            onChange={(e) => setV({ ...v, q: e.target.value })}
-            placeholder="Buscar por razão, fantasia, CNPJ ou código…"
-            className="pl-10"
-          />
-        </div>
+        <BuscaComSugestao
+          valor={v.q}
+          onChange={(q) => setV({ ...v, q })}
+          onSelect={(id) => start(() => router.push(`/clientes/${id}`))}
+        />
 
         <MultiSelect
           label="Status"
@@ -415,6 +411,106 @@ function CampoSelect({
       >
         {opcoes.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
       </select>
+    </div>
+  );
+}
+
+interface Sugestao {
+  id: string;
+  codigo: number | null;
+  razaoSocial: string;
+  cpfCnpj: string;
+}
+
+/**
+ * Busca com autocompletar (#94). Mostra sugestões "#codigo — razão social"
+ * com debounce de 250ms via /api/admin/buscar-vinculo. Click leva direto à
+ * ficha — não filtra a tabela (que continua disponível com Enter normal).
+ */
+function BuscaComSugestao({
+  valor, onChange, onSelect,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  onSelect: (id: string) => void;
+}) {
+  const [sugestoes, setSugestoes] = useState<Sugestao[]>([]);
+  const [aberto, setAberto] = useState(false);
+  const [hover, setHover] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!valor || valor.length < 2) { setSugestoes([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/admin/buscar-vinculo?q=${encodeURIComponent(valor)}`, { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        setSugestoes((j.clientes ?? []).slice(0, 8));
+        setHover(0);
+      } catch { /* ignore */ }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [valor]);
+
+  useEffect(() => {
+    function fora(e: MouseEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, []);
+
+  function lidarTeclas(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!aberto || sugestoes.length === 0) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setHover((h) => Math.min(h + 1, sugestoes.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHover((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter" && sugestoes[hover]) {
+      e.preventDefault();
+      onSelect(sugestoes[hover].id);
+      setAberto(false);
+    } else if (e.key === "Escape") {
+      setAberto(false);
+    }
+  }
+
+  return (
+    <div ref={wrapRef} className="relative flex-1 min-w-[240px] max-w-md">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        ref={inputRef}
+        value={valor}
+        onChange={(e) => { onChange(e.target.value); setAberto(true); }}
+        onFocus={() => setAberto(true)}
+        onKeyDown={lidarTeclas}
+        placeholder="Buscar por código, razão, CNPJ… ou seta+Enter pra abrir cliente"
+        className="pl-10"
+        autoComplete="off"
+      />
+      {aberto && sugestoes.length > 0 && (
+        <ul className="absolute z-30 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-72 overflow-y-auto">
+          {sugestoes.map((s, i) => (
+            <li
+              key={s.id}
+              onMouseEnter={() => setHover(i)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSelect(s.id);
+                setAberto(false);
+              }}
+              className={`px-3 py-2 cursor-pointer text-sm flex items-center gap-2 ${i === hover ? "bg-muted" : ""}`}
+            >
+              {s.codigo != null && (
+                <span className="font-mono text-xs text-cestacorp-blue shrink-0">#{s.codigo}</span>
+              )}
+              <span className="flex-1 truncate">{s.razaoSocial}</span>
+              <span className="text-[10px] text-muted-foreground font-mono shrink-0">{s.cpfCnpj}</span>
+              {i === hover && <CornerDownLeft className="h-3 w-3 text-muted-foreground" />}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

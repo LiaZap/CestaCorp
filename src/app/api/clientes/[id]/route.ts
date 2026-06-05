@@ -146,3 +146,39 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   return NextResponse.json({ id: params.id });
 }
+
+/**
+ * Soft-delete (#93): marca deletedAt na linha. Mantém histórico LGPD.
+ * Cliente fica visível em /configuracoes/lixeira por 30 dias (purge automático
+ * via job). Reverter: POST /api/lixeira/cliente/[id]/restaurar.
+ */
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  try { assertEquipe(session); } catch (err) {
+    if (err instanceof AuthorizationError) return NextResponse.json({ error: err.message }, { status: err.status });
+    throw err;
+  }
+
+  const cliente = await prisma.cliente.findUnique({
+    where: { id: params.id },
+    select: { id: true, razaoSocial: true, deletedAt: true },
+  });
+  if (!cliente) return NextResponse.json({ error: "não encontrado" }, { status: 404 });
+  if (cliente.deletedAt) return NextResponse.json({ ok: true, jaExcluido: true });
+
+  await prisma.cliente.update({
+    where: { id: params.id },
+    data: { deletedAt: new Date() },
+  });
+
+  await audit({
+    session, action: "cliente.soft-delete", resource: "cliente",
+    resourceId: params.id,
+    before: { razaoSocial: cliente.razaoSocial, deletedAt: null },
+    after: { deletedAt: new Date() },
+    request: req,
+  });
+
+  return NextResponse.json({ ok: true });
+}
