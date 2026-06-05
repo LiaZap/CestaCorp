@@ -93,6 +93,16 @@ export default async function RelatoriosPage() {
       statLabel: "taxa de entrega",
       color: "from-cestacorp-blue to-blue-700",
     },
+    {
+      // Patrick (13/06): "entender o LTV — média que os clientes ficam na base"
+      href: "/relatorios/ltv",
+      icon: TrendingUp,
+      title: "LTV (Lifetime Value)",
+      desc: "Tempo médio na base, receita acumulada por segmento",
+      stat: "📈",
+      statLabel: "duração × honorário",
+      color: "from-pink-500 to-rose-600",
+    },
   ];
 
   return (

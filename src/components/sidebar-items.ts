@@ -5,7 +5,7 @@
 import {
   LayoutDashboard, Users, FileText, MessageSquareWarning, ClipboardList,
   Tag, Settings, BarChart3, TrendingUp, Calendar, CreditCard,
-  Bell, FileBox, type LucideIcon,
+  Bell, FileBox, Receipt, type LucideIcon,
 } from "lucide-react";
 
 export type SidebarBadgeKey = "agenda" | "regua" | "reajustes";
@@ -53,9 +53,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { href: "/clientes", icon: Users, label: "Clientes" },
       { href: "/contratos", icon: FileText, label: "Contratos" },
-      // NF-e em revisão — escondido temporariamente (#12). Página segue acessível
-      // via /notas-fiscais e exibe um aviso "Em revisão".
-      // { href: "/notas-fiscais", icon: Receipt, label: "Notas Fiscais" },
+      // Patrick (13/06): adaptamos a aba de NF pra renomeador de PDFs via OCR.
+      // Importação XML continua em revisão, mas a ferramenta volta a ser útil.
+      { href: "/notas-fiscais", icon: Receipt, label: "Notas Fiscais" },
       { href: "/formularios", icon: ClipboardList, label: "Formulários" },
       { href: "/tags", icon: Tag, label: "Tags" },
     ],

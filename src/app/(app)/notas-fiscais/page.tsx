@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowLeft, AlertCircle } from "lucide-react";
+import { FileText, ArrowLeft, AlertCircle, FileSignature, ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -30,14 +30,35 @@ export default function NotasFiscaisPage() {
         <p className="text-muted-foreground">Importação e consulta de NF-e dos clientes</p>
       </div>
 
+      {/* Patrick (13/06): "podemos adaptar pra renomear PDFs de notas fiscais?" */}
+      <Card className="border-cestacorp-blue/30 bg-gradient-to-br from-cestacorp-blue/5 to-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-cestacorp-blue">
+            <FileSignature className="h-5 w-5" /> Renomear PDFs em lote
+          </CardTitle>
+          <CardDescription>
+            Sobe vários PDFs de NF, sistema identifica o tomador + data via OCR e devolve um ZIP
+            renomeado pra <code>NOME COMPLETO DO TOMADOR DDMMAAAA.pdf</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link href="/notas-fiscais/renomear">
+              <FileSignature className="h-4 w-4" /> Renomear lote de PDFs
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="border-amber-300 bg-amber-50/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-amber-900">
-            <AlertCircle className="h-5 w-5" /> Módulo em revisão
+            <AlertCircle className="h-5 w-5" /> Importação XML em revisão
           </CardTitle>
           <CardDescription className="text-amber-800">
-            O módulo de Notas Fiscais está temporariamente desativado enquanto a equipe revisa o parser
-            de XML e a vinculação com clientes. Volta em breve.
+            A importação de XML (NF-e) está temporariamente desativada enquanto a equipe revisa o parser
+            pra NFS-e dos clientes. Volta em breve.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-amber-900">
@@ -45,11 +66,6 @@ export default function NotasFiscaisPage() {
             Se precisa importar uma nota agora pra um caso urgente, fale com o time técnico — temos um
             script CLI manual.
           </p>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Voltar pro dashboard</Link>
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
