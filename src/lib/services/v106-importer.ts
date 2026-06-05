@@ -16,6 +16,7 @@ import { prisma } from "@/lib/db/prisma";
 import { isDocumentoValido } from "@/lib/security/documento";
 import { logger } from "@/lib/logger";
 import { importarV106Extras } from "./v106-importer-extra";
+import { importarV106Extras2 } from "./v106-importer-extra2";
 
 export interface AbaResult {
   aba: string;
@@ -442,6 +443,11 @@ export async function importarV106Completo(buffer: Buffer): Promise<AbaResult[]>
   // Abas extras (mensagens, indicações, agendas, endereços, etc.)
   const extras = await importarV106Extras(wb);
   resultados.push(...extras);
+
+  // Abas finais (certificados, obrigações, atividades, histórico,
+  // serviços, encerrados) — migração completa V-106 → sistema.
+  const extras2 = await importarV106Extras2(wb);
+  resultados.push(...extras2);
 
   return resultados;
 }
