@@ -165,7 +165,7 @@ export async function eventosDoMes(ano: number, mes: number) {
     where: { dataVencimento: { gte: inicio, lte: fim } },
     orderBy: { dataVencimento: "asc" },
     include: {
-      cliente: { select: { id: true, razaoSocial: true } },
+      cliente: { select: { id: true, codigo: true, razaoSocial: true } },
       obrigacao: { select: { tipo: true, nome: true } },
     },
   });
@@ -182,7 +182,7 @@ export async function proximosEventos(dias = 30) {
     orderBy: { dataVencimento: "asc" },
     take: 50,
     include: {
-      cliente: { select: { id: true, razaoSocial: true } },
+      cliente: { select: { id: true, codigo: true, razaoSocial: true } },
       obrigacao: { select: { tipo: true, nome: true } },
     },
   });

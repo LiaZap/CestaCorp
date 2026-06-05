@@ -154,23 +154,29 @@ export default async function TagsPage({
             </thead>
             <tbody>
               {tags.map((t) => (
-                <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
+                <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer">
                   <td className="py-2 pr-3">
-                    <span className="inline-flex items-center gap-2">
+                    <Link href={`/tags/${t.id}`} className="inline-flex items-center gap-2 hover:text-primary">
                       <span className="h-3 w-3 rounded-full shrink-0" style={{ background: t.cor ?? "#84CC16" }} />
                       <b className="truncate">{t.nome}</b>
-                    </span>
+                    </Link>
                   </td>
                   <td className="py-2 pr-3">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${badgeCategoria(t.categoria)}`}>
-                      {CATEGORIAS.find((c) => c.key === t.categoria)?.label ?? t.categoria}
-                    </span>
+                    <Link href={`/tags/${t.id}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${badgeCategoria(t.categoria)}`}>
+                        {CATEGORIAS.find((c) => c.key === t.categoria)?.label ?? t.categoria}
+                      </span>
+                    </Link>
                   </td>
                   <td className="py-2 pr-3">
-                    <span className="text-xs text-muted-foreground">{t.origem ?? "interno"}</span>
+                    <Link href={`/tags/${t.id}`} className="text-xs text-muted-foreground hover:text-primary">{t.origem ?? "interno"}</Link>
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{t._count.clientes}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{t._count.textos}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    <Link href={`/tags/${t.id}`} className="hover:text-primary">{t._count.clientes}</Link>
+                  </td>
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    <Link href={`/tags/${t.id}`} className="hover:text-primary font-semibold">{t._count.textos}</Link>
+                  </td>
                 </tr>
               ))}
               {tags.length === 0 && (

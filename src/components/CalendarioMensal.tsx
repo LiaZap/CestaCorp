@@ -8,8 +8,9 @@ type Evento = {
   titulo: string;
   dataVencimento: string | Date;
   status: "PENDENTE" | "CONCLUIDO" | "ATRASADO" | "ISENTO" | "CANCELADO";
-  cliente?: { razaoSocial: string } | null;
+  cliente?: { id?: string; codigo?: number | null; razaoSocial: string } | null;
   obrigacao?: { tipo: string } | null;
+  responsavel?: string | null;
 };
 
 const SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -79,20 +80,36 @@ export function CalendarioMensal({ ano, mes, eventos }: { ano: number; mes: numb
                     {cel.dia}
                   </div>
                   <div className="space-y-1 overflow-hidden">
-                    {itens.slice(0, 3).map((e) => (
-                      <Link
-                        key={e.id}
-                        href={`/agenda/${e.id}`}
-                        className={cn(
-                          "block border rounded px-1.5 py-0.5 truncate text-[10px] leading-tight",
-                          STATUS_STYLE[e.status] ?? "bg-muted"
-                        )}
-                        title={`${e.titulo}${e.cliente ? " · " + e.cliente.razaoSocial : ""}`}
-                      >
-                        {e.obrigacao?.tipo && <span className="font-bold mr-1">{e.obrigacao.tipo}</span>}
-                        {e.cliente?.razaoSocial ?? e.titulo}
-                      </Link>
-                    ))}
+                    {itens.slice(0, 3).map((e) => {
+                      const tooltip = [
+                        e.obrigacao?.tipo ? `[${e.obrigacao.tipo}] ` : "",
+                        e.titulo,
+                        e.cliente ? `\nCliente: ${e.cliente.codigo ? `#${e.cliente.codigo} — ` : ""}${e.cliente.razaoSocial}` : "",
+                        e.responsavel ? `\nResp: ${e.responsavel}` : "",
+                        `\nStatus: ${e.status}`,
+                      ].join("");
+                      return (
+                        <Link
+                          key={e.id}
+                          href={`/agenda/${e.id}`}
+                          className={cn(
+                            "block border rounded px-1.5 py-0.5 truncate text-[10px] leading-tight",
+                            STATUS_STYLE[e.status] ?? "bg-muted"
+                          )}
+                          title={tooltip}
+                        >
+                          {e.obrigacao?.tipo && <span className="font-bold mr-1">{e.obrigacao.tipo}</span>}
+                          {e.cliente
+                            ? <>
+                                {e.cliente.codigo != null && (
+                                  <span className="font-mono opacity-70 mr-1">#{e.cliente.codigo}</span>
+                                )}
+                                {e.cliente.razaoSocial}
+                              </>
+                            : e.titulo}
+                        </Link>
+                      );
+                    })}
                     {itens.length > 3 && (
                       <span className="text-[10px] text-muted-foreground">+{itens.length - 3} outro(s)</span>
                     )}

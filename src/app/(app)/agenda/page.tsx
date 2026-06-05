@@ -108,6 +108,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: { m?:
           status: e.status as any,
           cliente: e.cliente,
           obrigacao: e.obrigacao,
+          responsavel: e.responsavel,
         }))}
       />
 
@@ -135,7 +136,12 @@ export default async function AgendaPage({ searchParams }: { searchParams: { m?:
                           {e.titulo}
                         </p>
                         {e.cliente && (
-                          <p className="text-xs text-muted-foreground truncate">{e.cliente.razaoSocial}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {(e.cliente as any).codigo != null && (
+                              <span className="font-mono mr-1">#{(e.cliente as any).codigo}</span>
+                            )}
+                            {e.cliente.razaoSocial}
+                          </p>
                         )}
                       </div>
                     </div>
