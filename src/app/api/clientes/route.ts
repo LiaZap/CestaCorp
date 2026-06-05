@@ -14,7 +14,7 @@ const ClienteSchema = z.object({
     message: "CPF/CNPJ inválido (dígitos verificadores não conferem)",
   }),
   tipoPessoa: z.enum(["FISICA", "JURIDICA", "MEI"]).optional(),
-  classificacao: z.enum(["BRONZE", "PRATA", "OURO", "TOP"]).optional().nullable(),
+  classificacao: z.enum(["BRONZE", "PRATA", "OURO", "DIAMANTE", "TOP"]).optional().nullable(),
   status: z.enum(["ATIVO", "INATIVO", "ENCERRADO", "PROSPECT", "SUSPENSO"]).optional(),
   mesAniversarioReajuste: z.number().int().min(1).max(12).optional().nullable(),
   indiceReajuste: z.enum(["IPCA", "IGPM", "INPC", "FIXO", "CUSTOM"]).optional().nullable(),
@@ -30,6 +30,14 @@ const ClienteSchema = z.object({
   telefonePrincipal: z.string().optional(),
   niboCustomerId: z.string().optional().nullable(),
   digisacContactId: z.string().optional().nullable(),
+  // Endereço estruturado (#27)
+  enderecoLogradouro: z.string().optional().nullable(),
+  enderecoNumero: z.string().optional().nullable(),
+  enderecoComplemento: z.string().optional().nullable(),
+  enderecoBairro: z.string().optional().nullable(),
+  enderecoMunicipio: z.string().optional().nullable(),
+  enderecoUf: z.string().max(2).optional().nullable(),
+  enderecoCep: z.string().optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -84,6 +92,14 @@ export async function POST(req: NextRequest) {
         whatsappGrupoNome: d.whatsappGrupoNome || null,
         niboCustomerId: d.niboCustomerId || null,
         digisacContactId: d.digisacContactId || null,
+        // Endereço estruturado (#27)
+        enderecoLogradouro: d.enderecoLogradouro || null,
+        enderecoNumero: d.enderecoNumero || null,
+        enderecoComplemento: d.enderecoComplemento || null,
+        enderecoBairro: d.enderecoBairro || null,
+        enderecoMunicipio: d.enderecoMunicipio || null,
+        enderecoUf: d.enderecoUf ? d.enderecoUf.toUpperCase() : null,
+        enderecoCep: d.enderecoCep || null,
         emails: d.emailPrincipal ? { create: [{ email: d.emailPrincipal, principal: true }] } : undefined,
         telefones: d.telefonePrincipal ? { create: [{ numero: d.telefonePrincipal, principal: true, whatsapp: true }] } : undefined,
       },

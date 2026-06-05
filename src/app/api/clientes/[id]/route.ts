@@ -13,7 +13,7 @@ const ClienteSchema = z.object({
     message: "CPF/CNPJ inválido (dígitos verificadores não conferem)",
   }),
   tipoPessoa: z.enum(["FISICA", "JURIDICA", "MEI"]).optional(),
-  classificacao: z.enum(["BRONZE", "PRATA", "OURO", "TOP"]).optional().nullable(),
+  classificacao: z.enum(["BRONZE", "PRATA", "OURO", "DIAMANTE", "TOP"]).optional().nullable(),
   status: z.enum(["ATIVO", "INATIVO", "ENCERRADO", "PROSPECT", "SUSPENSO"]).optional(),
   mesAniversarioReajuste: z.number().int().min(1).max(12).optional().nullable(),
   indiceReajuste: z.enum(["IPCA", "IGPM", "INPC", "FIXO"]).optional().nullable(),
@@ -24,6 +24,14 @@ const ClienteSchema = z.object({
   telefonePrincipal: z.string().optional(),
   niboCustomerId: z.string().optional().nullable(),
   digisacContactId: z.string().optional().nullable(),
+  // Endereço estruturado (#27) — todos opcionais; aceitos no PUT.
+  enderecoLogradouro: z.string().optional().nullable(),
+  enderecoNumero: z.string().optional().nullable(),
+  enderecoComplemento: z.string().optional().nullable(),
+  enderecoBairro: z.string().optional().nullable(),
+  enderecoMunicipio: z.string().optional().nullable(),
+  enderecoUf: z.string().max(2).optional().nullable(),
+  enderecoCep: z.string().optional().nullable(),
 });
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -90,6 +98,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         respContabil: d.respContabil || null,
         niboCustomerId: d.niboCustomerId || null,
         digisacContactId: d.digisacContactId || null,
+        // Endereço estruturado (#27)
+        enderecoLogradouro: d.enderecoLogradouro ?? undefined,
+        enderecoNumero: d.enderecoNumero ?? undefined,
+        enderecoComplemento: d.enderecoComplemento ?? undefined,
+        enderecoBairro: d.enderecoBairro ?? undefined,
+        enderecoMunicipio: d.enderecoMunicipio ?? undefined,
+        enderecoUf: d.enderecoUf ? d.enderecoUf.toUpperCase() : undefined,
+        enderecoCep: d.enderecoCep ?? undefined,
       },
     });
 

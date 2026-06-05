@@ -434,7 +434,7 @@ export function FormBuilder({ initial }: { initial?: FormDef }) {
                 <div className="border-2 border-dashed border-cestacorp-blue/30 rounded-md p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold">Escolha o tipo:</p>
-                    <Button variant="ghost" size="icon" onClick={() => setNovoTipoAberto(false)}>
+                    <Button variant="ghost" size="icon" onClick={() => setNovoTipoAberto(false)} aria-label="Fechar seleção de tipo">
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
@@ -470,7 +470,7 @@ export function FormBuilder({ initial }: { initial?: FormDef }) {
                   <Settings2 className="h-4 w-4" />
                   Editando: <span className="text-cestacorp-blue">{campoAtual.label}</span>
                 </CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setCampoSelecionado(null)}>
+                <Button variant="ghost" size="icon" onClick={() => setCampoSelecionado(null)} aria-label="Fechar painel de campo">
                   <X className="h-4 w-4" />
                 </Button>
               </CardHeader>

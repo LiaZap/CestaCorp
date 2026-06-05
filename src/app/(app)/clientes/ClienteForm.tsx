@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, CheckCircle2, AlertCircle, Sparkles, Building2 } from "lucide-react";
 import { isDocumentoValido, soDigitos } from "@/lib/security/documento";
+import { EnderecoSection } from "@/components/forms/EnderecoSection";
 
 type ClienteFormInput = {
   id?: string;
@@ -31,6 +32,14 @@ type ClienteFormInput = {
   telefonePrincipal?: string;
   niboCustomerId?: string;
   digisacContactId?: string;
+  // Endereço estruturado (#27) — usado no mail merge de contrato
+  enderecoLogradouro?: string;
+  enderecoNumero?: string;
+  enderecoComplemento?: string;
+  enderecoBairro?: string;
+  enderecoMunicipio?: string;
+  enderecoUf?: string;
+  enderecoCep?: string;
 };
 
 export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
@@ -103,7 +112,7 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
         return;
       }
 
-      // Preenche os campos com os dados da Receita
+      // Preenche os campos com os dados da Receita — inclui endereço estruturado (#27)
       setF((s) => ({
         ...s,
         razaoSocial: s.razaoSocial || j.razaoSocial,
@@ -112,6 +121,14 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
         telefonePrincipal: s.telefonePrincipal || (j.telefone ?? ""),
         prefeitura: s.prefeitura || (j.endereco?.municipio ? `${j.endereco.municipio}/${j.endereco.uf}` : ""),
         dataConstituicao: s.dataConstituicao || (j.dataAbertura ?? ""),
+        // Auto-preenche endereço estruturado se ainda vazio
+        enderecoLogradouro: s.enderecoLogradouro || j.endereco?.logradouro || "",
+        enderecoNumero: s.enderecoNumero || j.endereco?.numero || "",
+        enderecoComplemento: s.enderecoComplemento || j.endereco?.complemento || "",
+        enderecoBairro: s.enderecoBairro || j.endereco?.bairro || "",
+        enderecoMunicipio: s.enderecoMunicipio || j.endereco?.municipio || "",
+        enderecoUf: s.enderecoUf || j.endereco?.uf || "",
+        enderecoCep: s.enderecoCep || j.endereco?.cep || "",
       }));
 
       setConsultaSucesso(
@@ -392,6 +409,11 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
           </div>
         </CardContent>
       </Card>
+
+      <EnderecoSection
+        valores={f}
+        onChange={(campo, valor) => set(campo, valor)}
+      />
 
       <Card>
         <CardHeader>

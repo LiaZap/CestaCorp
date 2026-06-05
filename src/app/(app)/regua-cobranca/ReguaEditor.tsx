@@ -132,7 +132,7 @@ export function ReguaEditor({ initial, onSaved }: { initial?: ReguaInput; onSave
             <div key={idx} className="border rounded-md p-4 space-y-3 bg-muted/30">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">Passo {idx + 1}</h3>
-                <Button variant="ghost" size="icon" onClick={() => removerPasso(idx)}>
+                <Button variant="ghost" size="icon" onClick={() => removerPasso(idx)} aria-label={`Remover passo ${idx + 1}`}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>

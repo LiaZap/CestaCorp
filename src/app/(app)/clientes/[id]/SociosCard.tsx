@@ -182,10 +182,10 @@ export function SociosCard({ clienteId, socios }: { clienteId: string; socios: S
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => abrirEdicao(s)}>
+                  <Button variant="ghost" size="icon" onClick={() => abrirEdicao(s)} aria-label={`Editar sócio ${s.nome}`}>
                     <Pencil className="h-3 w-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => remover(s.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => remover(s.id)} aria-label={`Remover sócio ${s.nome}`}>
                     <Trash2 className="h-3 w-3 text-destructive" />
                   </Button>
                 </div>
@@ -198,7 +198,7 @@ export function SociosCard({ clienteId, socios }: { clienteId: string; socios: S
           <div className="mt-4 border-t pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold">{editando.id ? "Editar sócio" : "Novo sócio"}</h4>
-              <Button variant="ghost" size="icon" onClick={() => setEditando(null)}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setEditando(null)} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

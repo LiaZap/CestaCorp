@@ -125,7 +125,7 @@ export function AnexosClient({
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>{form.id ? "Editar anexo" : "Novo anexo"}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => setForm(null)}><X className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => setForm(null)} aria-label="Fechar formulário"><X className="h-4 w-4" /></Button>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -262,10 +262,10 @@ export function AnexosClient({
                     )}
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)}>
+                    <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)} aria-label={`Editar anexo ${a.nome}`}>
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => remover(a.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => remover(a.id)} aria-label={`Remover anexo ${a.nome}`}>
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>

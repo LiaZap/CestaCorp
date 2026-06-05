@@ -194,7 +194,7 @@ export function UsersClient({ usuarios, currentUserId }: { usuarios: User[]; cur
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Novo funcionário</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => setNovoAberto(false)}><X className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => setNovoAberto(false)} aria-label="Cancelar criação"><X className="h-4 w-4" /></Button>
           </CardHeader>
           <CardContent>
             <form onSubmit={criar} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -261,7 +261,7 @@ export function UsersClient({ usuarios, currentUserId }: { usuarios: User[]; cur
             <CardTitle className="flex items-center gap-2">
               <Pencil className="h-4 w-4" /> Editando funcionário
             </CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => setEdicao(null)}><X className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => setEdicao(null)} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
           </CardHeader>
           <CardContent>
             <form onSubmit={salvarEdicao} className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -69,7 +69,7 @@ export default async function TemplatesPage() {
                   </div>
                   <form action={`/api/contratos/templates/${t.id}`} method="post">
                     <input type="hidden" name="_method" value="DELETE" />
-                    <Button type="submit" variant="ghost" size="icon">
+                    <Button type="submit" variant="ghost" size="icon" aria-label="Remover template">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </form>

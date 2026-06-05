@@ -111,11 +111,41 @@ export async function gerarContratoDocx(args: GerarContratoOpts): Promise<{
   const zip = new PizZip(content);
   const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
 
+  // Endereço pro mail merge (#27): se temos os campos estruturados, monta
+  // string formatada padrão pra placeholder único {endereco}. Mantém compat
+  // com `cliente.endereco` Json legado vindo da V106. Também expõe os campos
+  // separados em {enderecoLogradouro} etc. pra templates que querem detalhar.
+  const c = cliente as any;
+  const partesEndereco: string[] = [];
+  if (c.enderecoLogradouro) {
+    let l = String(c.enderecoLogradouro);
+    if (c.enderecoNumero) l += `, ${c.enderecoNumero}`;
+    if (c.enderecoComplemento) l += ` — ${c.enderecoComplemento}`;
+    partesEndereco.push(l);
+  }
+  if (c.enderecoBairro) partesEndereco.push(String(c.enderecoBairro));
+  if (c.enderecoMunicipio || c.enderecoUf) {
+    partesEndereco.push(
+      [c.enderecoMunicipio, c.enderecoUf].filter(Boolean).join("/")
+    );
+  }
+  if (c.enderecoCep) partesEndereco.push(`CEP ${c.enderecoCep}`);
+  const enderecoFormatado = partesEndereco.length > 0
+    ? partesEndereco.join(" · ")
+    : (typeof cliente.endereco === "string" ? cliente.endereco : "");
+
   doc.render({
     razaoSocial: cliente.razaoSocial,
     nomeFantasia: cliente.nomeFantasia ?? "",
     cnpj: cliente.cpfCnpj,
-    endereco: cliente.endereco ?? "",
+    endereco: enderecoFormatado,
+    enderecoLogradouro: c.enderecoLogradouro ?? "",
+    enderecoNumero: c.enderecoNumero ?? "",
+    enderecoComplemento: c.enderecoComplemento ?? "",
+    enderecoBairro: c.enderecoBairro ?? "",
+    enderecoMunicipio: c.enderecoMunicipio ?? "",
+    enderecoUf: c.enderecoUf ?? "",
+    enderecoCep: c.enderecoCep ?? "",
     socios: todosSocios,
     sociosAssinantes,
     email: cliente.emails[0]?.email ?? "",

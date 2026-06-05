@@ -142,7 +142,7 @@ export function IndicesClient({ indices }: { indices: Indice[] }) {
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>{form.id ? "Editar índice" : "Novo índice customizado"}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => setForm(null)}>
+            <Button variant="ghost" size="icon" onClick={() => setForm(null)} aria-label="Fechar formulário">
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
@@ -331,10 +331,10 @@ export function IndicesClient({ indices }: { indices: Indice[] }) {
                     </p>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => abrirEdicao(i)}>
+                    <Button variant="ghost" size="icon" onClick={() => abrirEdicao(i)} aria-label={`Editar índice ${i.nome}`}>
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => remover(i.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => remover(i.id)} aria-label={`Remover índice ${i.nome}`}>
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>

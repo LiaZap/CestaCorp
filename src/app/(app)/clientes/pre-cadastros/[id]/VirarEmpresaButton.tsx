@@ -77,7 +77,7 @@ export function VirarEmpresaButton({
         <h3 className="font-bold text-cestacorp-blue flex items-center gap-2">
           <Building2 className="h-5 w-5" /> Empresa abriu na Receita?
         </h3>
-        <Button variant="ghost" size="icon" onClick={() => setAberto(false)}>
+        <Button variant="ghost" size="icon" onClick={() => setAberto(false)} aria-label="Fechar diálogo">
           <X className="h-4 w-4" />
         </Button>
       </div>
