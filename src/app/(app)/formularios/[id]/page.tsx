@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
+import { AplicarRespostaButton } from "./AplicarRespostaButton";
 
 export const dynamic = "force-dynamic";
 
@@ -69,9 +70,10 @@ export default async function FormResponseDetail({ params }: { params: { id: str
               <Link href={`/clientes/${clienteLink.id}`}>Ver cliente: {clienteLink.razaoSocial}</Link>
             </Button>
           ) : (
-            <form action={`/api/forms/responses/${resposta._id}/aplicar`} method="post">
-              <Button type="submit">Aplicar ao cadastro (criar/atualizar cliente)</Button>
-            </form>
+            <AplicarRespostaButton
+              respostaId={String(resposta._id)}
+              tituloResposta={`${form?.title ?? resposta.formSlug} · ${resposta.autor?.nome ?? "(sem autor)"}`}
+            />
           )}
           <form action={`/api/forms/responses/${resposta._id}/status`} method="post">
             <input type="hidden" name="status" value="EM_ANALISE" />

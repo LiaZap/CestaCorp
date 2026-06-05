@@ -23,6 +23,14 @@ const FormResponseSchema = new Schema(
     },
     aplicadoEm: Date,
     aplicadoPor: String, // userId
+    // Como a resposta foi aplicada ao cadastro (#88, #89):
+    //   "criar"        = upsert por CPF/CNPJ (cria Cliente novo)
+    //   "cliente"      = vinculou a Cliente já existente
+    //   "precadastro"  = vinculou ou criou PreCadastro
+    vinculoModo: {
+      type: String,
+      enum: ["criar", "cliente", "precadastro"],
+    },
     origem: { type: String, default: "form-publico" }, // ou "import-google"
     googleTimestamp: Date, // para migração dos dados antigos
     ip: String,
