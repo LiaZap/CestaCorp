@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await connectMongo();
   await FormResponseModel.updateOne({ _id: params.id }, { $set: { status } });
   return NextResponse.redirect(
-    new URL(`/formularios/${params.id}`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/formularios/${params.id}`, req.nextUrl.origin),
     303
   );
 }

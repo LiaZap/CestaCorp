@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     data: { status: status as any },
   });
   return NextResponse.redirect(
-    new URL(`/agenda/${params.id}`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/agenda/${params.id}`, req.nextUrl.origin),
     303
   );
 }

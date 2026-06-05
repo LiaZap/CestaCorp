@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const autor = session.user?.name || session.user?.email || "equipe";
   await concluirEvento(params.id, autor, observacao);
   return NextResponse.redirect(
-    new URL(`/agenda/${params.id}`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/agenda/${params.id}`, req.nextUrl.origin),
     303
   );
 }

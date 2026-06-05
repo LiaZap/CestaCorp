@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/lib/auth";
 import { assertOwnership, assertEquipe, AuthorizationError } from "@/lib/security/ownership";
+import { audit } from "@/lib/security/audit";
 import { isDocumentoValido } from "@/lib/security/documento";
 
 const ClienteSchema = z.object({
@@ -58,6 +59,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const d = parsed.data;
 
+  // Auditoria seg #72: snapshot ANTES da edição pra registrar o diff.
+  // Edição de cliente é top-1 ação sensível LGPD/CFC (razão social, CPF,
+  // classificação, índice reajuste); rastreabilidade obrigatória.
+  const before = await prisma.cliente.findUnique({
+    where: { id: params.id },
+    select: {
+      razaoSocial: true, nomeFantasia: true, cpfCnpj: true, tipoPessoa: true,
+      classificacao: true, status: true, mesAniversarioReajuste: true,
+      indiceReajuste: true, respFiscal: true, respFolha: true, respContabil: true,
+      niboCustomerId: true, digisacContactId: true,
+    },
+  });
+  if (!before) return NextResponse.json({ error: "cliente não encontrado" }, { status: 404 });
+
   await prisma.$transaction(async (tx) => {
     await tx.cliente.update({
       where: { id: params.id },
@@ -95,6 +110,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         else await tx.contatoTelefone.create({ data: { clienteId: params.id, numero: d.telefonePrincipal, principal: true, whatsapp: true } });
       }
     }
+  });
+
+  await audit({
+    session,
+    action: "cliente.update",
+    resource: "cliente",
+    resourceId: params.id,
+    before,
+    after: {
+      razaoSocial: d.razaoSocial, nomeFantasia: d.nomeFantasia, cpfCnpj: d.cpfCnpj,
+      tipoPessoa: d.tipoPessoa, classificacao: d.classificacao, status: d.status,
+      mesAniversarioReajuste: d.mesAniversarioReajuste, indiceReajuste: d.indiceReajuste,
+      respFiscal: d.respFiscal, respFolha: d.respFolha, respContabil: d.respContabil,
+      niboCustomerId: d.niboCustomerId, digisacContactId: d.digisacContactId,
+    },
+    request: req,
   });
 
   return NextResponse.json({ id: params.id });

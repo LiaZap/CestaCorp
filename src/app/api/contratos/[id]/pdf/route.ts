@@ -3,13 +3,26 @@ import fs from "node:fs";
 import path from "node:path";
 import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/lib/auth";
+import { assertOwnership, AuthorizationError } from "@/lib/security/ownership";
 import { docxParaPdf } from "@/lib/services/docx-to-pdf";
 
 export const runtime = "nodejs";
 
+/**
+ * Auditoria seg #2 (IDOR): antes usava findUnique sem filtro clienteId.
+ * Cliente do portal podia baixar contrato de outro cliente conhecendo o id.
+ * Agora valida ownership: cliente só baixa o próprio; equipe baixa todos.
+ */
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  try {
+    await assertOwnership(session, "contrato", params.id);
+  } catch (err) {
+    if (err instanceof AuthorizationError) return NextResponse.json({ error: err.message }, { status: err.status });
+    throw err;
+  }
 
   const contrato = await prisma.contrato.findUnique({ where: { id: params.id } });
   if (!contrato || !contrato.docxPath) return NextResponse.json({ error: "Contrato sem arquivo" }, { status: 404 });

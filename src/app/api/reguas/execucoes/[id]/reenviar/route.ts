@@ -8,7 +8,7 @@ import { assertEquipe, AuthorizationError } from "@/lib/security/ownership";
  * Reenvio: marca a execução como PENDENTE com agendamento = agora, preservando
  * o histórico anterior em `tentativas`. Dispara o processador imediatamente.
  */
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try { assertEquipe(session); } catch (err) {
@@ -52,7 +52,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   }
 
   return NextResponse.redirect(
-    new URL(`/regua-cobranca/execucao/${params.id}?reenviado=1`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/regua-cobranca/execucao/${params.id}?reenviado=1`, req.nextUrl.origin),
     303
   );
 }

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
 
   return NextResponse.redirect(
-    new URL(`/cobrancas/${params.id}`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/cobrancas/${params.id}`, req.nextUrl.origin),
     303
   );
 }

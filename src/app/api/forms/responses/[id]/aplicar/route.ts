@@ -14,7 +14,7 @@ import { isDocumentoValido, soDigitos, formatarDocumento } from "@/lib/security/
  *    montar objetos e criar/atualizar no Postgres
  *  - Marca a FormResponse como APLICADO
  */
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try { assertEquipe(session); } catch (err) {
@@ -99,7 +99,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   }
 
   return NextResponse.redirect(
-    new URL(`/clientes/${cliente.id}`, process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    new URL(`/clientes/${cliente.id}`, req.nextUrl.origin),
     303
   );
 }

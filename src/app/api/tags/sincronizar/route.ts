@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { listarTags } from "@/lib/services/digisac";
@@ -27,11 +27,11 @@ function tokenValido(): boolean {
   return Boolean(t && t.length > 10 && !t.startsWith("dev-") && !t.includes("placeholder"));
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const base = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const base = req.nextUrl.origin;
 
   let items: { id: string; name: string; cor?: string }[] = [];
   let origem = "digisac";

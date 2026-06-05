@@ -858,3 +858,29 @@ model WebhookEvent {
   @@index([processedAt])
   @@map("webhook_events")
 }
+
+// =========================
+// FILE METADATA (ownership pra storage)
+// =========================
+/// Registra dono + escopo de cada arquivo do storage (uploads/).
+/// Auditoria seg #1: sem isso, /api/files/<hash> aceitava qualquer cliente
+/// logado baixar qualquer arquivo conhecendo o SHA256.
+/// hash é a chave (mesma usada como nome no FS / key no S3).
+/// scope = "cliente" / "contrato" / "nota_fiscal" / "form_response" / "system"
+///   - system: assets compartilhados (ex.: templates, logos)
+///   - outros: ownerType + ownerId identificam o dono
+model FileMetadata {
+  hash       String   @id              // sha256 do conteúdo
+  ext        String                   // ".pdf", ".docx", etc.
+  mime       String
+  nomeOriginal String?
+  tamanho    Int
+  scope      String                   // "cliente", "contrato", "nota_fiscal", "form_response", "system"
+  ownerType  String?                  // "cliente", "user", "system"
+  ownerId    String?                  // id do dono (clienteId, userId, ou null se system)
+  uploadedAt DateTime @default(now())
+  uploadedBy String?                  // userId que fez o upload
+  @@index([ownerType, ownerId])
+  @@index([scope])
+  @@map("file_metadata")
+}

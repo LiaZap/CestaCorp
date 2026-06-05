@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const method = String(form.get("_method") ?? "");
   if (method === "DELETE") {
     await prisma.contratoTemplate.update({ where: { id: params.id }, data: { ativo: false } });
-    return NextResponse.redirect(new URL("/contratos/templates", process.env.NEXTAUTH_URL || "http://localhost:3000"), 303);
+    return NextResponse.redirect(new URL("/contratos/templates", req.nextUrl.origin), 303);
   }
   return NextResponse.json({ error: "método desconhecido" }, { status: 400 });
 }

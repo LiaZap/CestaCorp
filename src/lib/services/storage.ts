@@ -10,6 +10,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { prisma } from "@/lib/db/prisma";
 
 // Import dinâmico que escapa da análise estática do webpack — só resolve
 // em runtime quando a dep está realmente instalada.
@@ -23,6 +24,15 @@ export interface UploadedFile {
   tamanho: number;
   backend: "filesystem" | "s3";
 }
+
+/**
+ * Escopo do arquivo. Determina quem pode baixar:
+ *  - `system`: liberado pra qualquer usuário autenticado (templates, assets, etc.)
+ *  - `cliente` / `contrato` / `nota_fiscal` / `form_response`:
+ *    cliente do portal só baixa se ownerId === session.user.clienteId.
+ *    Equipe baixa qualquer um.
+ */
+export type FileScope = "cliente" | "contrato" | "nota_fiscal" | "form_response" | "system";
 
 const MAX_SIZE = 15 * 1024 * 1024; // 15 MB
 
@@ -40,6 +50,10 @@ export async function uploadArquivo(file: {
   buffer: Buffer;
   ownerId?: string;   // clienteId ou userId, para controle
   ownerType?: "cliente" | "user" | "system";
+  /** Escopo do arquivo — define quem pode baixar. Default "system" pra back-compat. */
+  scope?: FileScope;
+  /** userId que está fazendo o upload, pra audit. */
+  uploadedBy?: string;
 }): Promise<UploadedFile> {
   if (file.buffer.length > MAX_SIZE) {
     throw new Error(`Arquivo muito grande (máx ${MAX_SIZE / 1024 / 1024}MB)`);
@@ -77,8 +91,34 @@ export async function uploadArquivo(file: {
     fs.writeFileSync(path.join(baseDir, `${id}${ext}`), file.buffer);
   }
 
-  // (Metadata em tabela dedicada ficará como opcional — por ora retornamos o hash
-  //  que já identifica unicamente o arquivo por conteúdo.)
+  // Registra ownership pra /api/files/[id] checar autorização no download.
+  // Auditoria seg #1: sem isso, qualquer cliente logado baixava qualquer arquivo
+  // sabendo o SHA256. Upsert porque o hash é determinístico pelo conteúdo
+  // (mesmo arquivo subido 2x não duplica).
+  try {
+    await prisma.fileMetadata.upsert({
+      where: { hash: id },
+      create: {
+        hash: id,
+        ext,
+        mime: file.mime,
+        nomeOriginal: file.name,
+        tamanho: file.buffer.length,
+        scope: file.scope ?? "system",
+        ownerType: file.ownerType ?? null,
+        ownerId: file.ownerId ?? null,
+        uploadedBy: file.uploadedBy ?? null,
+      },
+      update: {
+        // Se um cliente subiu o mesmo arquivo que já existia como "system",
+        // mantemos o escopo mais restritivo pra evitar leak retroativo.
+        // (Decisão conservadora: nunca afrouxar.)
+      },
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[storage] falha ao gravar FileMetadata — arquivo subiu mas sem ownership", err);
+  }
 
   return {
     id,
