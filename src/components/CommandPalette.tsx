@@ -10,7 +10,13 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar } from "./Avatar";
 
-type ClienteMini = { id: string; razaoSocial: string; nomeFantasia: string | null; cpfCnpj: string };
+type ClienteMini = {
+  id: string;
+  codigo: number | null; // CÓD da V106 — Patrick (11/06) quer ver na busca
+  razaoSocial: string;
+  nomeFantasia: string | null;
+  cpfCnpj: string;
+};
 
 type Ação = {
   id: string;
@@ -106,9 +112,12 @@ export function CommandPalette() {
       lista.push({ type: "acao", id: a.id, label: a.label, href: a.href, icon: a.icon, group: a.group });
     }
     for (const c of clientes) {
+      // Mostra o código (V106) como prefixo do nome — é assim que o
+      // financeiro/atendimento procura cliente no dia-a-dia.
+      const codigoPrefix = c.codigo != null ? `#${c.codigo} · ` : "";
       lista.push({
         type: "cliente", id: c.id,
-        label: c.nomeFantasia ?? c.razaoSocial,
+        label: `${codigoPrefix}${c.nomeFantasia ?? c.razaoSocial}`,
         sublabel: `${c.razaoSocial} · ${c.cpfCnpj}`,
         href: `/clientes/${c.id}`,
         group: "Clientes",
