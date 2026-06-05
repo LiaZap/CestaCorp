@@ -36,8 +36,13 @@ services:
       AUTENTIQUE_WEBHOOK_SECRET: ${AUTENTIQUE_WEBHOOK_SECRET}
       # ClickSign (assinatura — fallback opcional)
       CLICKSIGN_TOKEN: ${CLICKSIGN_TOKEN}
-      # Anthropic (OCR)
+      # OCR: pelo menos uma das duas chaves precisa estar setada
+      # pra renomeador de PDF de NF funcionar.
+      # OPENAI é preferido (Patrick 13/06); ANTHROPIC é fallback histórico.
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_OCR_MODEL: ${OPENAI_OCR_MODEL:-gpt-4o-mini}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_OCR_MODEL: ${ANTHROPIC_OCR_MODEL:-claude-sonnet-4-20250514}
       # S3 (uploads)
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_BUCKET: ${S3_BUCKET}

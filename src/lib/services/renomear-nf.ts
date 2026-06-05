@@ -67,14 +67,15 @@ export async function renomearPdfNotaFiscal(
     };
   }
 
-  // OCR mock (sem ANTHROPIC_API_KEY) não consegue extrair de verdade — sinaliza
+  // OCR mock (nenhuma OPENAI_API_KEY nem ANTHROPIC_API_KEY configurada).
+  // Não tenta renomear pra não criar arquivo com dado fake.
   if (ocr.provider === "mock") {
     return {
       arquivoOriginal,
       novoNome: arquivoOriginal,
       confianca: 0,
       status: "erro",
-      motivo: "ANTHROPIC_API_KEY não configurada — OCR rodando em modo mock",
+      motivo: "Configure OPENAI_API_KEY (ou ANTHROPIC_API_KEY) no EasyPanel — OCR está em modo mock.",
     };
   }
 

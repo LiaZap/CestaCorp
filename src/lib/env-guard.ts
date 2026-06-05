@@ -58,6 +58,8 @@ const RECOMMENDED_PROD = [
   "TZ",
   "SEED_ADMIN_PASSWORD",
   "CERTIFICATE_ENCRYPTION_KEY",
+  // OCR (renomeador de PDF): OPENAI_API_KEY OU ANTHROPIC_API_KEY.
+  // O check abaixo trata o "OU" — pelo menos um.
 ] as const;
 
 export function verificarEnvProducao() {
@@ -71,6 +73,11 @@ export function verificarEnvProducao() {
   const smtpInconsistente = temSmtpUser && !temSmtpPass;
 
   const avisos = RECOMMENDED_PROD.filter((k) => !process.env[k]);
+
+  // OCR: precisa de pelo menos uma das duas chaves (OPENAI/ANTHROPIC).
+  // Sem nenhuma, o renomeador de NF retorna erro claro pra cada arquivo.
+  const temOcrKey = Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+  if (!temOcrKey) avisos.push("OPENAI_API_KEY OU ANTHROPIC_API_KEY (renomeador de NF)" as any);
 
   if (isProd && faltando.length > 0) {
     // eslint-disable-next-line no-console
