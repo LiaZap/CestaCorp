@@ -60,6 +60,18 @@ const FormDefinitionSchema = new Schema(
     active: { type: Boolean, default: true },
     autoFillFromClienteId: { type: Boolean, default: true },
     notifyEmails: [String],
+    /** Versionamento (#91): cada PATCH salva snapshot anterior aqui.
+     *  Respostas antigas continuam válidas — referenciam apenas formSlug
+     *  e o renderer cai pra mostrar JSON cru se field.key sumir. */
+    versao: { type: Number, default: 1 },
+    versoes: [
+      {
+        versao: Number,
+        fields: [FieldSchema],
+        salvoEm: Date,
+        salvoPor: String, // userId
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -50,6 +50,7 @@ type FormDef = {
   fields: Field[];
   active: boolean;
   notifyEmails: string[];
+  versao?: number;
 };
 
 const TIPOS: { value: FieldType; label: string; icon: any; descricao: string }[] = [
@@ -217,6 +218,16 @@ export function FormBuilder({ initial }: { initial?: FormDef }) {
     }
   }
 
+  async function duplicar() {
+    if (!form.id) return;
+    if (!confirm(`Duplicar "${form.title}" como novo formulário (com sufixo -copia)?`)) return;
+    const r = await fetch(`/api/forms/definitions/${form.id}/duplicar`, { method: "POST" });
+    const j = await r.json();
+    if (!r.ok) { setErro(j.error ?? "Falha"); return; }
+    router.push(`/formularios/definitions/${j.id}`);
+    router.refresh();
+  }
+
   const campoAtual = campoSelecionado !== null ? form.fields[campoSelecionado] : null;
 
   // Pra mostrar a regra showIf, precisamos da lista de outros campos
@@ -247,8 +258,18 @@ export function FormBuilder({ initial }: { initial?: FormDef }) {
             />
             Ativo (disponível em <code>/forms/{form.slug || "..."}</code>)
           </label>
+          {isEdit && form.versao && (
+            <span className="text-xs text-muted-foreground" title="Cada salvamento que muda os campos vira nova versão. Respostas antigas continuam válidas.">
+              versão {form.versao}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
+          {isEdit && (
+            <Button variant="outline" size="sm" onClick={duplicar} title="Cria cópia inativa pra editar sem afetar este">
+              <Copy className="h-4 w-4" /> Duplicar
+            </Button>
+          )}
           {isEdit && (
             <Button variant="outline" size="sm" onClick={remover}>
               <Trash2 className="h-4 w-4 text-destructive" /> Excluir

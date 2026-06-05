@@ -43,13 +43,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   await connectMongo();
-  const before = await FormDefinitionModel.findById(params.id).lean();
+  const before: any = await FormDefinitionModel.findById(params.id).lean();
   if (!before) return NextResponse.json({ error: "não encontrado" }, { status: 404 });
 
+  // Versionamento (#91): se fields mudou, salva snapshot da versão anterior
+  // antes de aplicar o patch. Mantém últimas 20 revisões.
+  const fieldsmudaram = parsed.data.fields !== undefined
+    && JSON.stringify(parsed.data.fields) !== JSON.stringify(before.fields);
+
+  const ops: any = { $set: parsed.data };
+  if (fieldsmudaram) {
+    const versaoAtual = (before.versao ?? 1);
+    const snapshot = {
+      versao: versaoAtual,
+      fields: before.fields ?? [],
+      salvoEm: new Date(),
+      salvoPor: (session.user as any).id ?? null,
+    };
+    ops.$set = { ...ops.$set, versao: versaoAtual + 1 };
+    ops.$push = { versoes: { $each: [snapshot], $slice: -20 } };
+  }
+
   const updated = await FormDefinitionModel.findByIdAndUpdate(
-    params.id,
-    { $set: parsed.data },
-    { new: true }
+    params.id, ops, { new: true }
   ).lean();
 
   await audit({

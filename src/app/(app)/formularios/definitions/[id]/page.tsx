@@ -41,6 +41,7 @@ export default async function EditarFormularioPage({
           fields: def.fields,
           active: def.active ?? true,
           notifyEmails: def.notifyEmails ?? [],
+          versao: def.versao ?? 1,
         }}
       />
     </div>
