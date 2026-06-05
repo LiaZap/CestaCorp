@@ -16,8 +16,24 @@ const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default async function MinhaSemanaPage() {
   const session = await auth();
-  const me = session?.user?.name ?? "";
+  const me = (session?.user?.name ?? "").trim();
   const meUpper = me.toUpperCase();
+
+  // Sem nome no perfil os filtros por "responsável contém me" virariam
+  // "responsável contém ''" — match em TODO mundo. Bloqueia logo e manda
+  // completar o perfil (#82).
+  if (!me) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <EmptyState
+          icon={Users}
+          title="Complete seu perfil"
+          description="Sem seu nome cadastrado não dá pra filtrar os clientes/obrigações sob sua responsabilidade. Edite o perfil e tente de novo."
+          cta={{ href: "/perfil", label: "Completar perfil" }}
+        />
+      </div>
+    );
+  }
 
   // Filtros: clientes onde eu sou responsável, eventos da agenda que são meus,
   // execuções da régua recentes dos meus clientes.

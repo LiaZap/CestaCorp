@@ -75,7 +75,15 @@ type Field = {
   showIf?: { field: string; equals: any };
 };
 
-export function FormRenderer({ slug, fields }: { slug: string; fields: Field[] }) {
+export function FormRenderer({
+  slug,
+  fields,
+  preCadastroId,
+}: {
+  slug: string;
+  fields: Field[];
+  preCadastroId?: string;
+}) {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -101,7 +109,11 @@ export function FormRenderer({ slug, fields }: { slug: string; fields: Field[] }
     const res = await fetch(`/api/forms/${slug}/responses`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ answers, autor: { nome, email, telefone } }),
+      body: JSON.stringify({
+        answers,
+        autor: { nome, email, telefone },
+        ...(preCadastroId ? { preCadastroId } : {}),
+      }),
     });
     setEnviando(false);
     if (res.ok) setOk(true);

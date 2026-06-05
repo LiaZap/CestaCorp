@@ -1,8 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { gerarPropostasReajuste, obterIndiceAcumulado12m } from "@/lib/services/reajuste";
 import { formatMoney } from "@/lib/utils";
-import { TrendingUp } from "lucide-react";
+import { AplicarReajusteButton } from "./AplicarReajusteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -75,12 +74,13 @@ export default async function ReajustesPage({ searchParams }: { searchParams: { 
                     <td className="py-2 pr-3">{formatMoney(p.valorAtual)}</td>
                     <td className="py-2 pr-3 font-semibold text-cestacorp-green">{formatMoney(p.valorProposto)}</td>
                     <td className="py-2 pr-3">
-                      <form action="/api/reajustes/propostas" method="post" className="inline">
-                        <input type="hidden" name="clienteId" value={p.clienteId} />
-                        <Button size="sm" type="submit">
-                          <TrendingUp className="h-3 w-3" /> Aplicar
-                        </Button>
-                      </form>
+                      <AplicarReajusteButton
+                        clienteId={p.clienteId}
+                        razaoSocial={p.razaoSocial}
+                        percentual={p.percentual}
+                        valorAtual={p.valorAtual}
+                        valorProposto={p.valorProposto}
+                      />
                     </td>
                   </tr>
                 ))}

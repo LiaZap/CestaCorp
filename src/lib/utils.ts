@@ -22,6 +22,27 @@ export function formatDateTime(value: Date | string | null | undefined) {
   return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
+/**
+ * Formata número como percentual pt-BR (#64).
+ * - input "ratio" (padrão): 0.15 => "15%"
+ * - input "value":           15   => "15%"
+ */
+export function formatPercent(
+  value: number | string | null | undefined,
+  opts: { input?: "ratio" | "value"; digits?: number } = {},
+) {
+  if (value == null || value === "") return "—";
+  const num = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(num)) return "—";
+  const digits = opts.digits ?? 2;
+  const ratio = (opts.input ?? "ratio") === "ratio" ? num : num / 100;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "percent",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+  }).format(ratio);
+}
+
 export function formatCpfCnpj(doc: string) {
   const clean = doc.replace(/\D/g, "");
   if (clean.length === 11) {

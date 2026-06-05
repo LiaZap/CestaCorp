@@ -10,13 +10,25 @@ async function getSidebarBadges() {
   const hoje = new Date();
   const fimDoDia = new Date(hoje);
   fimDoDia.setHours(23, 59, 59, 999);
+  const mesAtual = hoje.getMonth() + 1; // 1..12
+  const anoAtual = hoje.getFullYear();
 
+  // Reajustes (#20): conta clientes ATIVOS cujo mês-aniversário é o atual
+  // e que ainda NÃO tiveram um ReajusteHistorico no ano corrente. Não é
+  // 1:1 com a tela de propostas (que também depende de índice ter valor),
+  // mas é aproximação fiel pro badge: "tem reajuste pendente este mês".
   const [agenda, regua, reajustes] = await Promise.all([
     prisma.eventoAgenda.count({
       where: { status: "PENDENTE", dataVencimento: { lte: fimDoDia } },
     }),
     prisma.execucaoRegua.count({ where: { status: "PENDENTE" } }),
-    prisma.cliente.count({ where: {} }).then(() => 0).catch(() => 0),
+    prisma.cliente.count({
+      where: {
+        status: "ATIVO",
+        mesAniversarioReajuste: mesAtual,
+        reajustesHistorico: { none: { ano: anoAtual } },
+      },
+    }),
   ]);
 
   return { agenda, regua, reajustes };

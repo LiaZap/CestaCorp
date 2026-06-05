@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Save } from "lucide-react";
+import { isCpfValido, soDigitos } from "@/lib/security/documento";
 
 type Form = {
   id?: string;
@@ -39,6 +40,19 @@ export function PreCadastroForm({ defaults }: { defaults?: Form }) {
   });
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cpfErro, setCpfErro] = useState<string | null>(null);
+
+  // CPF do contato é opcional, mas se preenchido tem que ser válido (#82).
+  function validarCpfSePreenchido(): boolean {
+    const limpo = soDigitos(f.cpfContato ?? "");
+    if (!limpo) { setCpfErro(null); return true; }
+    if (limpo.length !== 11 || !isCpfValido(limpo)) {
+      setCpfErro("CPF inválido");
+      return false;
+    }
+    setCpfErro(null);
+    return true;
+  }
 
   // Próximo código sugerido
   useEffect(() => {
@@ -55,6 +69,10 @@ export function PreCadastroForm({ defaults }: { defaults?: Form }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!validarCpfSePreenchido()) {
+      setErro("Corrija o CPF antes de salvar");
+      return;
+    }
     setLoading(true); setErro(null);
     try {
       const url = isEdit ? `/api/pre-cadastros/${f.id}` : "/api/pre-cadastros";
@@ -103,7 +121,18 @@ export function PreCadastroForm({ defaults }: { defaults?: Form }) {
           </div>
           <div className="space-y-1">
             <Label>CPF</Label>
-            <Input value={f.cpfContato ?? ""} onChange={(e) => set("cpfContato", e.target.value)} placeholder="000.000.000-00" />
+            <Input
+              value={f.cpfContato ?? ""}
+              onChange={(e) => { set("cpfContato", e.target.value); if (cpfErro) setCpfErro(null); }}
+              onBlur={validarCpfSePreenchido}
+              placeholder="000.000.000-00"
+              aria-invalid={Boolean(cpfErro)}
+            />
+            {cpfErro && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {cpfErro}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { Bell, LogOut, Monitor } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Avatar } from "@/components/Avatar";
+import { logger } from "@/lib/logger";
 import { useEffect, useState } from "react";
 
 export function MobileTopBar({ userName }: { userName: string }) {
@@ -17,7 +18,10 @@ export function MobileTopBar({ userName }: { userName: string }) {
         if (!r.ok) return;
         const j = await r.json();
         if (alive) setUnread(j.unreadCount ?? 0);
-      } catch {}
+      } catch (err) {
+        // Falha de rede no polling não trava a UI — só logamos pra rastrear taxa de falha.
+        logger.warn("mobile-topbar.notifications.fetch.falhou", { err: String(err) });
+      }
     };
     load();
     const t = setInterval(load, 60_000);

@@ -5,6 +5,9 @@ import { assertEquipe, AuthorizationError } from "@/lib/security/ownership";
 import { isDocumentoValido } from "@/lib/security/documento";
 import { prisma } from "@/lib/db/prisma";
 import { audit } from "@/lib/security/audit";
+import { connectMongo } from "@/lib/db/mongo";
+import { FormResponseModel } from "@/models/FormResponse";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -101,6 +104,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       clienteId: cliente.id,
     },
   });
+
+  // Promove respostas de formulário que vieram pelo link `?pre=<id>` (#79):
+  // agora elas pertencem ao Cliente, então setamos clienteId pra ficar
+  // navegável a partir da ficha do cliente.
+  try {
+    await connectMongo();
+    const updated = await FormResponseModel.updateMany(
+      { preCadastroId: pre.id, $or: [{ clienteId: null }, { clienteId: { $exists: false } }] },
+      { $set: { clienteId: cliente.id } },
+    );
+    if (updated.modifiedCount > 0) {
+      logger.info("pre-cadastro.respostas-promovidas", {
+        preId: pre.id,
+        clienteId: cliente.id,
+        respostas: updated.modifiedCount,
+      });
+    }
+  } catch (err) {
+    logger.warn("pre-cadastro.promover-respostas.falhou", { preId: pre.id, err: String(err) });
+  }
 
   await audit({
     session,

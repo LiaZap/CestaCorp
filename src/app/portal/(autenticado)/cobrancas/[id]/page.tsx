@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/CopyButton";
 import { ArrowLeft, ExternalLink, Copy } from "lucide-react";
 import { formatDate, formatMoney } from "@/lib/utils";
 
@@ -62,15 +63,21 @@ export default async function PortalCobrancaDetail({ params }: { params: { id: s
           <CardContent className="space-y-4 text-sm">
             {cobranca.pixCopiaCola && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                  <Copy className="h-3 w-3" /> PIX copia-e-cola
-                </p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Copy className="h-3 w-3" /> PIX copia-e-cola
+                  </p>
+                  <CopyButton value={cobranca.pixCopiaCola} label="Copiar PIX" copiedLabel="PIX copiado" />
+                </div>
                 <code className="block bg-muted p-3 rounded break-all text-xs">{cobranca.pixCopiaCola}</code>
               </div>
             )}
             {cobranca.linhaDigitavel && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Linha digitável</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs text-muted-foreground">Linha digitável</p>
+                  <CopyButton value={cobranca.linhaDigitavel} label="Copiar linha" copiedLabel="Linha copiada" />
+                </div>
                 <code className="block bg-muted p-3 rounded break-all font-mono text-xs">{cobranca.linhaDigitavel}</code>
               </div>
             )}

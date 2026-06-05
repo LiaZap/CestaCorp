@@ -44,6 +44,8 @@ services:
       S3_REGION: ${S3_REGION}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+      # Cron compartilhado entre app e scheduler (#78).
+      CRON_SECRET: ${CRON_SECRET}
       TZ: America/Sao_Paulo
     ports:
       - "3000:3000"
@@ -58,6 +60,25 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    networks: [cestacorp]
+
+  # Scheduler interno (#78) — dispara os crons (régua, aniversários, expurgo).
+  # Roda como serviço separado pra não competir CPU/memória com o app web.
+  # Bate nos endpoints HTTP do app via rede interna `cestacorp`.
+  scheduler:
+    build: .
+    container_name: cestacorp-scheduler
+    restart: unless-stopped
+    command: ["node", "scripts/run-scheduler.js"]
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      SCHEDULER_BASE_URL: ${SCHEDULER_BASE_URL:-http://app:3000}
+      CRON_SECRET: ${CRON_SECRET}
+    depends_on:
+      app:
+        condition: service_healthy
     networks: [cestacorp]
 
   postgres:

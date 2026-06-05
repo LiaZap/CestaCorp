@@ -81,7 +81,8 @@
     top: 18px;
     transition: all 160ms ease;
     pointer-events: none;
-    color: #64748b;
+    /* #60 — contraste a11y AA: slate-600 (#475569) em vez de slate-500 (#64748b) */
+    color: #475569;
     font-weight: 500;
     background: transparent;
   }
@@ -145,10 +146,13 @@
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
-  .status-ativo   { @apply bg-green-100 text-green-700; }
-  .status-aberto  { @apply bg-blue-100 text-blue-700; }
-  .status-atraso  { @apply bg-red-100 text-red-700; }
-  .status-pago    { @apply bg-emerald-100 text-emerald-700; }
-  .status-pendente{ @apply bg-amber-100 text-amber-700; }
-  .status-erro    { @apply bg-rose-100 text-rose-700; }
+  /* #64 — Unificado: "ativo" e "pago" usam emerald (estado positivo). */
+  .status-ativo     { @apply bg-emerald-100 text-emerald-700; }
+  .status-pago      { @apply bg-emerald-100 text-emerald-700; }
+  .status-aberto    { @apply bg-blue-100 text-blue-700; }
+  .status-atraso    { @apply bg-red-100 text-red-700; }
+  .status-pendente  { @apply bg-amber-100 text-amber-700; }
+  .status-erro      { @apply bg-rose-100 text-rose-700; }
+  .status-cancelado { @apply bg-slate-200 text-slate-700; }
+  .status-parcial   { @apply bg-amber-100 text-amber-700; }
 }

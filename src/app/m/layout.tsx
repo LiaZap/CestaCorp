@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { Toaster } from "sonner";
 import { MobileNav } from "./MobileNav";
 import { MobileTopBar } from "./MobileTopBar";
 
@@ -21,6 +22,7 @@ export default async function MobileLayout({ children }: { children: React.React
         {children}
       </main>
       <MobileNav />
+      <Toaster richColors closeButton position="top-center" />
     </div>
   );
 }

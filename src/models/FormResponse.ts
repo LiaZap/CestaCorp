@@ -9,6 +9,9 @@ const FormResponseSchema = new Schema(
     formSlug: { type: String, required: true, index: true },
     formId: { type: Schema.Types.ObjectId, ref: "FormDefinition" },
     clienteId: { type: String, index: true }, // id do Postgres
+    // Vínculo com pré-cadastro quando o link veio do e-mail de boas-vindas (#79).
+    // O virar-cliente promove preCadastroId → clienteId nas respostas existentes.
+    preCadastroId: { type: String, index: true },
     autor: { nome: String, email: String, telefone: String },
     answers: { type: Schema.Types.Mixed, default: {} }, // { key: value }
     files: [{ key: String, url: String, mime: String, size: Number }],

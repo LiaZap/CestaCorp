@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, AlertCircle, Send, CheckCircle2, FileText, TrendingDown, CalendarClock } from "lucide-react";
 import { formatDate, formatMoney } from "@/lib/utils";
@@ -30,7 +31,8 @@ export default async function DashboardPage({
   const dias = (PERIODOS_VALIDOS.includes(diasRaw as any) ? diasRaw : 30) as PeriodoDias;
   const meses = Math.max(1, Math.ceil(dias / 30));
 
-  const [kpis, timeline, funil, topAtrasos, classif, reguaStatus, proximas] = await Promise.all([
+  const [session, kpis, timeline, funil, topAtrasos, classif, reguaStatus, proximas] = await Promise.all([
+    auth(),
     getKpis(),
     getCobrancasTimeline(meses),
     getFormsFunil(),
@@ -39,6 +41,10 @@ export default async function DashboardPage({
     getReguaStatus(dias),
     getProximasCobrancas(7, 8),
   ]);
+
+  // Alerta no topo caso o perfil esteja incompleto (#82) — sem `name` o
+  // /minha-semana fica inutilizável e os filtros por responsável quebram.
+  const nomePerfil = (session?.user?.name ?? "").trim();
 
   const cardsKpi = [
     { label: "Clientes ativos", value: kpis.clientesAtivos, sub: `de ${kpis.clientesTotal} no total`, icon: Users, color: "text-cestacorp-blue" },
@@ -58,6 +64,19 @@ export default async function DashboardPage({
         </div>
         <PeriodoSelector atual={dias} />
       </div>
+
+      {!nomePerfil && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 mt-0.5 text-amber-700 shrink-0" />
+          <div className="flex-1">
+            <b className="text-amber-900">Complete seu perfil.</b>{" "}
+            <span className="text-amber-800">
+              Seu nome está vazio — filtros como &ldquo;Minha semana&rdquo; precisam dele pra funcionar.
+            </span>{" "}
+            <Link href="/perfil" className="font-medium underline">Editar perfil</Link>
+          </div>
+        </div>
+      )}
 
       {/* Ações rápidas */}
       <QuickActions />

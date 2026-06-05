@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Plus, Pencil, Trash2, Cake, FileSignature, Crown, X, Save } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Cake, FileSignature, Crown, X, Save, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { isCpfValido, soDigitos } from "@/lib/security/documento";
 
 type Socio = {
   id: string;
@@ -46,6 +47,17 @@ export function SociosCard({ clienteId, socios }: { clienteId: string; socios: S
   const [editando, setEditando] = useState<FormSocio | null>(null);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [cpfErro, setCpfErro] = useState<string | null>(null);
+
+  function validarCpf(): boolean {
+    const limpo = soDigitos(editando?.cpf ?? "");
+    if (limpo.length !== 11 || !isCpfValido(limpo)) {
+      setCpfErro("CPF inválido");
+      return false;
+    }
+    setCpfErro(null);
+    return true;
+  }
 
   function abrirNovo() {
     setEditando({ ...VAZIO });
@@ -71,6 +83,10 @@ export function SociosCard({ clienteId, socios }: { clienteId: string; socios: S
 
   async function salvar() {
     if (!editando) return;
+    if (!validarCpf()) {
+      setErro("Corrija o CPF antes de salvar");
+      return;
+    }
     setLoading(true); setErro(null);
     try {
       const body = {
@@ -192,7 +208,17 @@ export function SociosCard({ clienteId, socios }: { clienteId: string; socios: S
               </div>
               <div className="space-y-1">
                 <Label>CPF *</Label>
-                <Input value={editando.cpf} onChange={(e) => setEditando({ ...editando!, cpf: e.target.value })} />
+                <Input
+                  value={editando.cpf}
+                  onChange={(e) => { setEditando({ ...editando!, cpf: e.target.value }); if (cpfErro) setCpfErro(null); }}
+                  onBlur={() => { if (editando?.cpf) validarCpf(); }}
+                  aria-invalid={Boolean(cpfErro)}
+                />
+                {cpfErro && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {cpfErro}
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>E-mail</Label>

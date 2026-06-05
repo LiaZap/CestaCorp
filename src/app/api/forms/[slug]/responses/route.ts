@@ -17,6 +17,9 @@ const BodySchema = z.object({
   answers: z.record(z.any()),
   autor: AutorSchema,
   clienteId: z.string().optional(),
+  // Quando o form é aberto pelo link enviado no e-mail de boas-vindas (#79),
+  // o `?pre=<id>` é preservado pra associar a resposta ao pré-cadastro.
+  preCadastroId: z.string().optional(),
 });
 
 /**
@@ -133,6 +136,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     formSlug: params.slug,
     formId: form._id,
     clienteId: parsed.data.clienteId,
+    preCadastroId: parsed.data.preCadastroId,
     autor: parsed.data.autor,
     answers: parsed.data.answers,
     ip: req.headers.get("x-forwarded-for") || undefined,

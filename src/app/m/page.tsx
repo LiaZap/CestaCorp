@@ -125,7 +125,7 @@ export default async function MobileHome() {
               return (
                 <li key={c.id}>
                   <Link
-                    href={`/m/cobrancas`}
+                    href={`/m/cobrancas/${c.id}`}
                     className="flex items-center gap-3 rounded-xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-3 active:scale-[0.99] transition"
                   >
                     <div className={

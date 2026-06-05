@@ -5,6 +5,7 @@ import { connectMongo } from "@/lib/db/mongo";
 import { MessageLogModel } from "@/models/MessageLog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/CopyButton";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, RefreshCw, ExternalLink, Copy, Send, Calculator } from "lucide-react";
 import { calcularValorAtualizadoComSnapshot, getConfigCobranca } from "@/lib/services/valor-atualizado";
@@ -158,13 +159,19 @@ export default async function CobrancaDetailPage({ params }: { params: { id: str
           <CardContent className="space-y-3 text-sm">
             {cobranca.linhaDigitavel && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Linha digitável</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs text-muted-foreground">Linha digitável</p>
+                  <CopyButton value={cobranca.linhaDigitavel} label="Copiar linha" copiedLabel="Linha copiada" />
+                </div>
                 <pre className="bg-muted p-2 rounded font-mono text-xs break-all">{cobranca.linhaDigitavel}</pre>
               </div>
             )}
             {cobranca.pixCopiaCola && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">PIX copia-e-cola</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs text-muted-foreground">PIX copia-e-cola</p>
+                  <CopyButton value={cobranca.pixCopiaCola} label="Copiar PIX" copiedLabel="PIX copiado" />
+                </div>
                 <pre className="bg-muted p-2 rounded font-mono text-xs break-all">{cobranca.pixCopiaCola}</pre>
               </div>
             )}

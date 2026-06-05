@@ -26,6 +26,23 @@ const ACTION_COLORS: Record<string, string> = {
   "contrato.gerar": "bg-violet-50 text-violet-700",
 };
 
+/**
+ * Mapeia o tipo de `resource` do audit log pra rota da UI. Sem mapping,
+ * o ID fica como texto não-clicável (#83) — evita Link 404 pra recursos
+ * sem tela própria (ex: indice_customizado, regra-tag).
+ */
+const RESOURCE_PATH: Record<string, (id: string) => string> = {
+  cliente: (id) => `/clientes/${id}`,
+  cobranca: (id) => `/cobrancas/${id}`,
+  contrato: (id) => `/contratos/${id}`,
+  execucao: (id) => `/regua-cobranca/execucao/${id}`,
+  obrigacao: (id) => `/agenda/${id}`,
+  pre_cadastro: (id) => `/clientes/pre-cadastros/${id}`,
+  contrato_template: (id) => `/contratos/templates/${id}`,
+  regua: (id) => `/regua-cobranca/${id}`,
+  "regra-tag": (id) => `/tags#${id}`,
+};
+
 export default async function AuditLogPage({ searchParams }: { searchParams: { action?: string; resource?: string } }) {
   const where: any = {};
   if (searchParams.action) where.action = searchParams.action;
@@ -92,7 +109,15 @@ export default async function AuditLogPage({ searchParams }: { searchParams: { a
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {l.resource}
-                      {l.resourceId && <Link href={`/clientes/${l.resourceId}`} className="ml-1 hover:text-primary font-mono">#{l.resourceId.slice(0, 8)}</Link>}
+                      {l.resourceId && (() => {
+                        const buildPath = RESOURCE_PATH[l.resource];
+                        const idLabel = `#${l.resourceId.slice(0, 8)}`;
+                        return buildPath ? (
+                          <Link href={buildPath(l.resourceId)} className="ml-1 hover:text-primary font-mono">{idLabel}</Link>
+                        ) : (
+                          <span className="ml-1 font-mono" title="recurso sem rota mapeada">{idLabel}</span>
+                        );
+                      })()}
                       {l.ip && <span className="ml-2">· IP {l.ip}</span>}
                     </p>
                   </div>

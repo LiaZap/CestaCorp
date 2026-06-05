@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Search, CheckCircle2, AlertCircle, Sparkles, Building2 } from "lucide-react";
+import { isDocumentoValido, soDigitos } from "@/lib/security/documento";
 
 type ClienteFormInput = {
   id?: string;
@@ -14,7 +15,7 @@ type ClienteFormInput = {
   nomeFantasia?: string;
   cpfCnpj: string;
   tipoPessoa?: "FISICA" | "JURIDICA" | "MEI";
-  classificacao?: "BRONZE" | "PRATA" | "OURO" | "TOP" | null;
+  classificacao?: "BRONZE" | "PRATA" | "OURO" | "TOP" | "DIAMANTE" | null;
   status?: "ATIVO" | "INATIVO" | "ENCERRADO" | "PROSPECT" | "SUSPENSO";
   mesAniversarioReajuste?: number | null;
   indiceReajuste?: "IPCA" | "IGPM" | "INPC" | "FIXO" | "CUSTOM" | null;
@@ -50,6 +51,24 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
   const [consultando, setConsultando] = useState(false);
   const [consultaErro, setConsultaErro] = useState<string | null>(null);
   const [consultaSucesso, setConsultaSucesso] = useState<string | null>(null);
+  const [docErro, setDocErro] = useState<string | null>(null);
+
+  // Valida CPF/CNPJ no onBlur — usa o algoritmo oficial em lib/security/documento.
+  // No edit não revalida (#82) porque o campo é disabled.
+  function validarDoc(): boolean {
+    const limpo = soDigitos(f.cpfCnpj ?? "");
+    if (!limpo) { setDocErro("Informe CPF ou CNPJ"); return false; }
+    if (limpo.length !== 11 && limpo.length !== 14) {
+      setDocErro("CPF deve ter 11 dígitos · CNPJ deve ter 14");
+      return false;
+    }
+    if (!isDocumentoValido(limpo)) {
+      setDocErro(limpo.length === 11 ? "CPF inválido (dígitos verificadores)" : "CNPJ inválido (dígitos verificadores)");
+      return false;
+    }
+    setDocErro(null);
+    return true;
+  }
 
   // Pega próximo código quando é cadastro novo
   useEffect(() => {
@@ -107,6 +126,11 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Bloqueia envio se o documento for inválido (#82). No edit pula porque o campo é disabled.
+    if (!isEdit && !validarDoc()) {
+      setErro("Corrija o CPF/CNPJ antes de salvar");
+      return;
+    }
     setLoading(true);
     setErro(null);
     try {
@@ -160,9 +184,11 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
               <Input
                 required
                 value={f.cpfCnpj}
-                onChange={(e) => set("cpfCnpj", e.target.value)}
+                onChange={(e) => { set("cpfCnpj", e.target.value); if (docErro) setDocErro(null); }}
+                onBlur={() => { if (!isEdit && f.cpfCnpj) validarDoc(); }}
                 placeholder="00.000.000/0000-00"
                 disabled={isEdit}
+                aria-invalid={Boolean(docErro)}
               />
               <Button
                 type="button"
@@ -175,6 +201,11 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
                 {consultando ? "Consultando…" : "Consultar Receita"}
               </Button>
             </div>
+            {docErro && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {docErro}
+              </p>
+            )}
             {consultaErro && (
               <p className="text-xs text-destructive flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" /> {consultaErro}
@@ -237,6 +268,7 @@ export function ClienteForm({ defaults }: { defaults?: ClienteFormInput }) {
               <option value="PRATA">Prata</option>
               <option value="OURO">Ouro</option>
               <option value="TOP">Top</option>
+              <option value="DIAMANTE">Diamante</option>
             </select>
           </div>
 

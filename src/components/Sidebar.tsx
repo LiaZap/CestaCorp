@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { Logo } from "./Logo";
 import { signOut } from "next-auth/react";
 
@@ -21,7 +22,9 @@ const menu = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", badgeKey: null as null | keyof SidebarBadges },
   { href: "/clientes", icon: Users, label: "Clientes", badgeKey: null },
   { href: "/contratos", icon: FileText, label: "Contratos", badgeKey: null },
-  { href: "/notas-fiscais", icon: Receipt, label: "Notas Fiscais", badgeKey: null },
+  // NF-e em revisão — escondido temporariamente (#12). A página segue
+  // acessível via /notas-fiscais e mostra um aviso "Módulo em revisão".
+  // { href: "/notas-fiscais", icon: Receipt, label: "Notas Fiscais", badgeKey: null },
   { href: "/agenda", icon: Calendar, label: "Agenda", badgeKey: "agenda" as const },
   { href: "/regua-cobranca", icon: MessageSquareWarning, label: "Régua de Cobrança", badgeKey: "regua" as const },
   { href: "/reajustes", icon: TrendingUp, label: "Reajustes", badgeKey: "reajustes" as const },
@@ -43,7 +46,11 @@ export function Sidebar({ badges }: { badges?: SidebarBadges }) {
     try {
       const v = localStorage.getItem(LS_KEY);
       if (v === "1") setCollapsed(true);
-    } catch {}
+    } catch (err) {
+      // localStorage pode falhar em modo privado / quota cheia / SSR. Não é fatal,
+      // só perdemos a preferência de colapso. Logamos pra rastrear se virar comum.
+      logger.warn("sidebar.localStorage.read.falhou", { err: String(err) });
+    }
     setMounted(true);
   }, []);
 
@@ -52,7 +59,9 @@ export function Sidebar({ badges }: { badges?: SidebarBadges }) {
     setCollapsed(next);
     try {
       localStorage.setItem(LS_KEY, next ? "1" : "0");
-    } catch {}
+    } catch (err) {
+      logger.warn("sidebar.localStorage.write.falhou", { err: String(err) });
+    }
   }
 
   return (
