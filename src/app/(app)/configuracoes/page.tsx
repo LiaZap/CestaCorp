@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
-import { Users, Database, Key, Webhook, Settings as SettingsIcon, Shield, Calculator } from "lucide-react";
+import { Users, Database, Key, Webhook, Settings as SettingsIcon, Shield, Calculator, UserCircle2 } from "lucide-react";
 import { IcsFeedCard } from "./IcsFeedCard";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +74,21 @@ export default async function ConfiguracoesPage() {
               <div className="flex-1">
                 <p className="font-semibold">Tipos de contrato</p>
                 <p className="text-xs text-muted-foreground">Cadastrar Aditivo, Encerramento, etc. (Patrick 13/06)</p>
+              </div>
+              <span className="text-muted-foreground">→</span>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/configuracoes/portal-cliente" className="block">
+          <Card className="hover:border-cestacorp-blue/40 transition h-full">
+            <CardContent className="pt-6 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <UserCircle2 className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">Portal do cliente — acessos</p>
+                <p className="text-xs text-muted-foreground">Gerar links de primeiro acesso (mostra na tela — não depende de SMTP)</p>
               </div>
               <span className="text-muted-foreground">→</span>
             </CardContent>

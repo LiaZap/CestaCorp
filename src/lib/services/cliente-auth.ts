@@ -76,6 +76,54 @@ export async function convidarClienteAcesso(params: {
   return { acessoId: acesso.id, token, jaExistia: Boolean(existente) };
 }
 
+/**
+ * Gera/renova convite SEM mandar email — retorna o link pronto.
+ *
+ * Útil quando:
+ *  - SMTP ainda não está configurado (Patrick não setou app password)
+ *  - Equipe quer mandar o link via WhatsApp ao invés de email
+ *  - Cliente esqueceu o email e a equipe precisa reenviar manualmente
+ *
+ * Mesma lógica de upsert do convidarClienteAcesso, só não chama enviarEmail.
+ */
+export async function gerarLinkConvite(params: {
+  clienteId: string;
+  email: string;
+  nome: string;
+}): Promise<{ acessoId: string; link: string; expiraEm: Date; jaExistia: boolean }> {
+  const token = gerarToken();
+  const expira = addDays(new Date(), 7);
+
+  const existente = await prisma.clienteAcesso.findFirst({
+    where: { clienteId: params.clienteId, email: params.email.toLowerCase() },
+  });
+
+  let acesso;
+  if (existente) {
+    acesso = await prisma.clienteAcesso.update({
+      where: { id: existente.id },
+      data: { nome: params.nome, tokenConvite: token, tokenConviteExpira: expira, ativo: true },
+    });
+  } else {
+    acesso = await prisma.clienteAcesso.create({
+      data: {
+        clienteId: params.clienteId,
+        email: params.email.toLowerCase(),
+        nome: params.nome,
+        tokenConvite: token,
+        tokenConviteExpira: expira,
+      },
+    });
+  }
+
+  return {
+    acessoId: acesso.id,
+    link: `${PORTAL_URL}/portal/primeiro-acesso/${token}`,
+    expiraEm: expira,
+    jaExistia: Boolean(existente),
+  };
+}
+
 // ==============================
 // Ativação (cliente define senha)
 // ==============================
