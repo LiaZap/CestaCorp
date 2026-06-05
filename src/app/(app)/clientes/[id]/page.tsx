@@ -12,6 +12,7 @@ import { ClienteTimeline } from "@/components/ClienteTimeline";
 import { ConvidarClienteCard } from "@/components/ConvidarClienteCard";
 import { SociosCard } from "./SociosCard";
 import { ExcluirClienteButton } from "./ExcluirClienteButton";
+import { PlanosClienteCard } from "./PlanosClienteCard";
 import { calcularValorAtualizadoLote } from "@/lib/services/valor-atualizado";
 import { CardValorConsolidado } from "@/components/CardValorConsolidado";
 import { BannerInadimplencia, BolinhaAtraso } from "@/components/BolinhaAtraso";
@@ -34,9 +35,17 @@ export default async function ClienteDetalhePage({ params }: { params: { id: str
       cobrancas: { orderBy: { vencimento: "desc" }, take: 20 },
       tags: { include: { tag: true } },
       observacoes: { orderBy: { createdAt: "desc" } },
+      planos: { include: { servico: true }, orderBy: [{ status: "asc" }, { dataInicio: "desc" }] },
     },
   });
   if (!cliente) notFound();
+
+  // Serviços disponíveis pra criar planos novos
+  const servicosCatalogo = await prisma.catalogoServico.findMany({
+    where: { ativo: true },
+    select: { id: true, nome: true, categoria: true },
+    orderBy: { ordem: "asc" },
+  });
 
   await connectMongo();
   const forms = await FormResponseModel.find({ clienteId: cliente.id })
@@ -190,6 +199,24 @@ export default async function ClienteDetalhePage({ params }: { params: { id: str
           <ClienteTimeline eventos={timeline} clienteId={cliente.id} />
         </CardContent>
       </Card>
+
+      {/* Planos contratados (#90) */}
+      <PlanosClienteCard
+        clienteId={cliente.id}
+        planosIniciais={cliente.planos.map((p: any) => ({
+          id: p.id,
+          servicoId: p.servicoId,
+          status: p.status,
+          valorMensal: Number(p.valorMensal),
+          diaVencimento: p.diaVencimento,
+          dataInicio: p.dataInicio.toISOString(),
+          dataCancelamento: p.dataCancelamento?.toISOString() ?? null,
+          motivoCancelamento: p.motivoCancelamento,
+          observacao: p.observacao,
+          servico: { id: p.servico.id, nome: p.servico.nome, categoria: p.servico.categoria },
+        }))}
+        servicosDisponiveis={servicosCatalogo}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Coluna principal */}

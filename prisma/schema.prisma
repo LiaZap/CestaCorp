@@ -160,6 +160,7 @@ model Cliente {
   indicacoesFeitas     Indicacao[]          @relation("ClienteIndicador")
   indicacoesRecebidas  Indicacao[]          @relation("ClienteIndicado")
   reajustesHistorico   ReajusteHistorico[]
+  planos               PlanoCliente[]
 
   // Soft-delete
   deletedAt DateTime?
@@ -506,6 +507,7 @@ model Contrato {
   template             ContratoTemplate?      @relation(fields: [templateId], references: [id])
   honorarios           Honorario[]
   reajustes            ReajusteHistorico[]
+  planos               PlanoCliente[]
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
@@ -1336,17 +1338,52 @@ model TabelaHonorario {
 /// Catálogo de serviços oferecidos (V-106 ÍNDICE).
 /// Padroniza taxonomia (Cliente.servico FK).
 model CatalogoServico {
-  id              String    @id @default(cuid())
-  slug            String    @unique
+  id              String          @id @default(cuid())
+  slug            String          @unique
   nome            String
   categoria       String
-  descricao       String?   @db.Text
-  valorReferencia Decimal?  @db.Decimal(14, 2)
-  ativo           Boolean   @default(true)
-  ordem           Int       @default(0)
+  descricao       String?         @db.Text
+  valorReferencia Decimal?        @db.Decimal(14, 2)
+  ativo           Boolean         @default(true)
+  ordem           Int             @default(0)
   clientes        Cliente[]
+  planos          PlanoCliente[]
 
   @@map("catalogo_servicos")
+}
+
+/// PLANO/SERVIÇO contratado pelo cliente (#90).
+/// Patrick (reunião 05/06): o mesmo CNPJ pode consumir Contabilidade + Gestão
+/// de Consultório simultaneamente. Cada serviço tem ciclo de vida próprio
+/// (assinatura, suspensão, cancelamento) sem afetar o outro.
+/// NIBO continua somando todos os planos ATIVOS pra faturamento único.
+model PlanoCliente {
+  id                 String          @id @default(cuid())
+  clienteId          String
+  servicoId          String          // FK CatalogoServico
+  status             StatusPlano     @default(ATIVO)
+  dataInicio         DateTime        @default(now())
+  dataCancelamento   DateTime?
+  motivoCancelamento String?         @db.Text
+  valorMensal        Decimal         @default(0) @db.Decimal(14, 2)
+  diaVencimento      Int?            // dia do mês pra cobrar
+  contratoId         String?
+  observacao         String?         @db.Text
+  cliente            Cliente         @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  servico            CatalogoServico @relation(fields: [servicoId], references: [id])
+  contrato           Contrato?       @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([clienteId, status])
+  @@index([servicoId])
+  @@map("planos_cliente")
+}
+
+enum StatusPlano {
+  ATIVO       // sendo cobrado normalmente
+  SUSPENSO    // pausado temporariamente (sem cobrança, com obrigações pausadas)
+  CANCELADO   // rescindido — preservado pra histórico
 }
 
 /// Tracking de upload de arquivo via formulário público com integração Drive.
