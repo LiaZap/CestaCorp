@@ -18,12 +18,16 @@ const ObrigacaoSchema = z.object({
   antecedenciaDias: z.number().int().min(0).max(60).default(7),
   global: z.boolean().default(true),
   clienteId: z.string().optional().nullable(),
-  categoriaCliente: z.enum(["BRONZE","PRATA","OURO","TOP"]).optional().nullable(),
+  categoriaCliente: z.enum(["BRONZE","PRATA","OURO","DIAMANTE","TOP"]).optional().nullable(),
   tributacaoFiltro: z.string().optional().nullable(),
   tagsRequeridas: z.array(z.string()).optional(),
   tagsExcluidas: z.array(z.string()).optional(),
   responsavel: z.string().optional(),
   ativa: z.boolean().default(true),
+  // #92: canais de envio do lembrete + horário + TagTexto vinculado
+  canais: z.array(z.enum(["whatsapp", "email", "ics"])).default(["whatsapp"]),
+  horarioLembrete: z.string().regex(/^\d{2}:\d{2}$/).default("08:00"),
+  tagTextoId: z.string().optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {

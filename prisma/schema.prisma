@@ -912,6 +912,18 @@ model Obrigacao {
   responsavel        String?
   /// Setor responsável (V-106 OBRIGAÇÕES): FOLHA, FISCAL, CONTABIL, SOCIETARIO, GERAL.
   setor              String?
+  /// Canais de envio do lembrete antecipado (#92).
+  /// Patrick (05/06): "ela manda no dia 15 pro cliente essa guia... avisar
+  ///                  eles dentro do WhatsApp". Valores aceitos:
+  ///   "whatsapp"  → dispara via Digisac (mensagem do TagTexto vinculado)
+  ///   "email"     → enviarEmail() c/ template
+  ///   "ics"       → gera link /api/agenda/eventos/[id]/ics (cliente importa)
+  canais             String[]       @default(["whatsapp"])
+  /// Mensagem usada pelo canal WhatsApp/Email (FK lógica pra TagTexto.id).
+  /// Não FK estrita pra não obrigar excluir obrigação se mensagem for apagada.
+  tagTextoId         String?
+  /// Horário do disparo do lembrete (HH:mm, default 08:00 horário Brasília).
+  horarioLembrete    String         @default("08:00")
   ativa              Boolean        @default(true)
   eventos            EventoAgenda[]
   cliente            Cliente?       @relation(fields: [clienteId], references: [id], onDelete: Cascade)

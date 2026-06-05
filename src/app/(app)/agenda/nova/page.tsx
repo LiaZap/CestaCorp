@@ -17,12 +17,23 @@ export default function NovaObrigacaoPage() {
     mesVencimento: 3,
     diaVencimentoAnual: 31,
     antecedenciaDias: 7,
+    horarioLembrete: "08:00",
+    canais: ["whatsapp"] as string[],
     global: true,
     categoriaCliente: "",
     tributacaoFiltro: "",
     responsavel: "",
     ativa: true,
   });
+
+  function toggleCanal(canal: string) {
+    setF((s: any) => ({
+      ...s,
+      canais: s.canais.includes(canal)
+        ? s.canais.filter((c: string) => c !== canal)
+        : [...s.canais, canal],
+    }));
+  }
   const [salvando, setSalvando] = useState(false);
 
   function up(k: string, v: any) { setF((s: any) => ({ ...s, [k]: v })); }
@@ -94,14 +105,52 @@ export default function NovaObrigacaoPage() {
               )}
 
               <div className="space-y-1">
-                <Label>Antecedência da notificação (dias)</Label>
+                <Label>Antecedência do lembrete (dias)</Label>
                 <Input type="number" min={0} max={60} value={f.antecedenciaDias} onChange={(e) => up("antecedenciaDias", Number(e.target.value))} />
+                <p className="text-[10px] text-muted-foreground">Ex.: DAS vence dia 20, antecedência 5 → lembrete sai no dia 15.</p>
               </div>
               <div className="space-y-1">
-                <Label>Responsável</Label>
+                <Label>Horário do envio</Label>
+                <Input type="time" value={f.horarioLembrete} onChange={(e) => up("horarioLembrete", e.target.value)} />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label>Responsável (interno — quem acompanha)</Label>
                 <Input value={f.responsavel} onChange={(e) => up("responsavel", e.target.value)} placeholder="Nome do responsável" />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Canais de envio</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Patrick (05/06): "avisar eles dentro do WhatsApp". Marque os canais
+              que serão usados pra disparar o lembrete pro cliente.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {[
+              { v: "whatsapp", l: "WhatsApp via Digisac", desc: "Mensagem do TagTexto vinculado dispara no horário acima." },
+              { v: "email",    l: "E-mail",                desc: "Usa SMTP do Workspace. Precisa de email cadastrado no cliente." },
+              { v: "ics",      l: "Agenda (.ics)",         desc: "Anexa link de calendar pro cliente importar no Google/Outlook." },
+            ].map((c) => (
+              <label key={c.v} className="flex items-start gap-2 cursor-pointer border rounded-md p-2 hover:bg-muted/40">
+                <input
+                  type="checkbox"
+                  checked={f.canais.includes(c.v)}
+                  onChange={() => toggleCanal(c.v)}
+                  className="mt-1"
+                />
+                <div className="text-sm">
+                  <div className="font-medium">{c.l}</div>
+                  <div className="text-xs text-muted-foreground">{c.desc}</div>
+                </div>
+              </label>
+            ))}
+            {f.canais.length === 0 && (
+              <p className="text-xs text-destructive">⚠ Sem canais → o lembrete será gerado mas não enviado.</p>
+            )}
           </CardContent>
         </Card>
 

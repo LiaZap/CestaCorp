@@ -26,7 +26,10 @@ export default async function ListaObrigacoesPage() {
             <h1 className="text-3xl font-bold text-cestacorp-blue flex items-center gap-2">
               <Settings className="h-7 w-7" /> Obrigações
             </h1>
-            <p className="text-muted-foreground">Modelos recorrentes que geram eventos na agenda</p>
+            <p className="text-muted-foreground">
+              Lembretes <strong>antecipados</strong> pro cliente — não tarefa da equipe.
+              Quando uma obrigação dispara, manda mensagem WhatsApp + iCal pra agenda dele.
+            </p>
           </div>
           <Button asChild>
             <Link href="/agenda/nova">
@@ -39,7 +42,11 @@ export default async function ListaObrigacoesPage() {
       <Card>
         <CardHeader>
           <CardTitle>{obrigacoes.length} obrigações cadastradas</CardTitle>
-          <CardDescription>Ativas geram eventos automaticamente na rodada diária</CardDescription>
+          <CardDescription>
+            Cada obrigação tem um <strong>cronograma de lembretes</strong> que vai pro cliente
+            (não pra equipe). Coluna <strong>"# clientes"</strong> mostra quantos vão receber
+            no próximo disparo.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {obrigacoes.length === 0 ? (

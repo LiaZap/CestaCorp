@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, Ban, SkipForward } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Ban, SkipForward, Calendar } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +114,11 @@ export default async function EventoDetalhePage({ params }: { params: { id: stri
               </Button>
             </form>
           )}
+          <Button asChild variant="outline">
+            <a href={`/api/agenda/eventos/${evento.id}/ics`} download>
+              <Calendar className="h-4 w-4" /> Baixar .ics (Google/Outlook)
+            </a>
+          </Button>
         </CardContent>
       </Card>
     </div>
