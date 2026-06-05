@@ -25,3 +25,4 @@ uploads/
 tmp/
 tmp-v106/
 0)`
+.env.local-test
