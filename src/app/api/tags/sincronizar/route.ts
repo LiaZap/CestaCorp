@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { assertEquipe, AuthorizationError } from "@/lib/security/ownership";
 import { prisma } from "@/lib/db/prisma";
 import { listarTags } from "@/lib/services/digisac";
+import { logger } from "@/lib/logger";
 
 function slugify(s: string) {
-  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
@@ -27,11 +29,22 @@ function tokenValido(): boolean {
   return Boolean(t && t.length > 10 && !t.startsWith("dev-") && !t.includes("placeholder"));
 }
 
+/**
+ * Sync de tags com Digisac.
+ * Sempre retorna JSON (nunca 500 — erros vão em `erros[]`).
+ * Cliente: faz fetch e mostra toast. Não há mais form-submit que deixava
+ * o usuário travado em /api/tags/sincronizar quando dava throw.
+ */
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
-  const base = req.nextUrl.origin;
+  try { assertEquipe(session); } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
 
   let items: { id: string; name: string; cor?: string }[] = [];
   let origem = "digisac";
@@ -45,35 +58,83 @@ export async function POST(req: NextRequest) {
     try {
       const res = await listarTags();
       items = (res?.data || []).map((t: any) => ({ id: t.id, name: t.name }));
-    } catch (err) {
+      if (items.length === 0) {
+        items = TAGS_MOCK;
+        origem = "digisac-demo";
+        modo = "vazio-fallback";
+      }
+    } catch (err: any) {
+      logger.warn("Digisac listarTags falhou — usando mock", { err: String(err?.message ?? err) });
       items = TAGS_MOCK;
       origem = "digisac-demo";
-      modo = "fallback";
+      modo = "api-indisponivel";
     }
   }
 
   let novas = 0, atualizadas = 0;
+  const erros: { tag: string; motivo: string }[] = [];
+
   for (const t of items) {
-    const slug = slugify(t.name);
-    const exist = await prisma.tag.findFirst({
-      where: { OR: [{ slug }, { externoId: t.id }] },
-    });
-    if (exist) {
-      await prisma.tag.update({
-        where: { id: exist.id },
-        data: { nome: t.name, externoId: t.id, origem, ...(t.cor ? { cor: t.cor } : {}) },
+    try {
+      const slug = slugify(t.name);
+      if (!slug) {
+        erros.push({ tag: t.name, motivo: "nome inválido (slug vazio)" });
+        continue;
+      }
+      // Procura por slug OU externoId — não por nome (evita conflito com
+      // tags V-106 que têm o mesmo nome mas externoId distinto).
+      const exist = await prisma.tag.findFirst({
+        where: { OR: [{ slug }, { externoId: t.id }] },
+        select: { id: true, externoId: true },
       });
-      atualizadas++;
-    } else {
-      await prisma.tag.create({
-        data: { nome: t.name, slug, externoId: t.id, origem, cor: t.cor ?? "#84CC16" },
-      });
-      novas++;
+      if (exist) {
+        // Não sobrescreve nome (preserva a V-106) — só sincroniza externoId
+        // e cor pra correlação com Digisac.
+        await prisma.tag.update({
+          where: { id: exist.id },
+          data: {
+            externoId: t.id,
+            origem,
+            ...(t.cor ? { cor: t.cor } : {}),
+          },
+        });
+        atualizadas++;
+      } else {
+        // Pode existir tag com mesmo nome mas slug diferente — tenta de novo
+        // pelo nome e atualiza em vez de criar (evita P2002 unique nome).
+        const porNome = await prisma.tag.findUnique({ where: { nome: t.name }, select: { id: true } });
+        if (porNome) {
+          await prisma.tag.update({
+            where: { id: porNome.id },
+            data: { externoId: t.id, origem, ...(t.cor ? { cor: t.cor } : {}) },
+          });
+          atualizadas++;
+        } else {
+          await prisma.tag.create({
+            data: {
+              nome: t.name,
+              slug,
+              externoId: t.id,
+              origem,
+              cor: t.cor ?? "#84CC16",
+            },
+          });
+          novas++;
+        }
+      }
+    } catch (err: any) {
+      const motivo = String(err?.message ?? err).slice(0, 150);
+      erros.push({ tag: t.name, motivo });
+      logger.error("sync Digisac tag falhou", { tag: t.name, err: motivo });
     }
   }
 
-  return NextResponse.redirect(
-    new URL(`/tags?synced=1&novas=${novas}&atualizadas=${atualizadas}&modo=${modo}`, base),
-    303
-  );
+  return NextResponse.json({
+    ok: true,
+    novas,
+    atualizadas,
+    erros,
+    modo,
+    totalRecebido: items.length,
+  });
 }

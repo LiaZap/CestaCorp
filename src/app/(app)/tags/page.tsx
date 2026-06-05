@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, CheckCircle2, Info, Tag as TagIcon, Filter } from "lucide-react";
+import { SincronizarDigisacButton } from "./SincronizarDigisacButton";
 
 export const dynamic = "force-dynamic";
 
@@ -74,11 +75,7 @@ export default async function TagsPage({
               <Filter className="h-4 w-4" /> Regras automáticas
             </Link>
           </Button>
-          <form action="/api/tags/sincronizar" method="post">
-            <Button type="submit">
-              <RefreshCw className="h-4 w-4" /> Sincronizar Digisac
-            </Button>
-          </form>
+          <SincronizarDigisacButton />
         </div>
       </div>
 
