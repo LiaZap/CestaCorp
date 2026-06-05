@@ -12,6 +12,8 @@ import { ClienteTimeline } from "@/components/ClienteTimeline";
 import { ConvidarClienteCard } from "@/components/ConvidarClienteCard";
 import { SociosCard } from "./SociosCard";
 import { calcularValorAtualizadoLote } from "@/lib/services/valor-atualizado";
+import { CardValorConsolidado } from "@/components/CardValorConsolidado";
+import { BannerInadimplencia, BolinhaAtraso } from "@/components/BolinhaAtraso";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +68,27 @@ export default async function ClienteDetalhePage({ params }: { params: { id: str
     }));
   const atualizacoesMap = await calcularValorAtualizadoLote(cobrancasParaCalcular);
 
+  // Totalizador consolidado (Patrick call 18/05: "valor atualizado pra
+  // pagamento hoje dessas X mensalidades em aberto é tanto, vou fazer pix manual").
+  const consolidado = Array.from(atualizacoesMap.values()).reduce(
+    (acc, a) => ({
+      qtd: acc.qtd + 1,
+      bruto: acc.bruto + a.bruto,
+      total: acc.total + a.total,
+      diasAtrasoMaximo: Math.max(acc.diasAtrasoMaximo, a.diasAtraso),
+    }),
+    { qtd: 0, bruto: 0, total: 0, diasAtrasoMaximo: 0 }
+  );
+
+  // Quantas cobranças estão de fato em atraso (não só abertas) — pra bolinha.
+  const hojeDt = new Date();
+  hojeDt.setHours(0, 0, 0, 0);
+  const qtdAtrasadas = cliente.cobrancas.filter(
+    (c) =>
+      (c.status === "ATRASADO" ||
+        (c.status === "ABERTO" && c.vencimento < hojeDt))
+  ).length;
+
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Cabeçalho */}
@@ -83,6 +106,9 @@ export default async function ClienteDetalhePage({ params }: { params: { id: str
             <span className={"status-badge " + (cliente.status === "ATIVO" ? "status-ativo" : "status-aberto")}>
               {cliente.status}
             </span>
+            {qtdAtrasadas > 0 && (
+              <BolinhaAtraso qtd={qtdAtrasadas} size={10} comLabel />
+            )}
             {cliente.classificacao && (
               <span className="status-badge bg-amber-100 text-amber-700">{cliente.classificacao}</span>
             )}
@@ -106,6 +132,19 @@ export default async function ClienteDetalhePage({ params }: { params: { id: str
           </Button>
         </div>
       </div>
+
+      {/* Alerta inadimplência pesada (3+ atrasadas) — Patrick call 18/05 */}
+      <BannerInadimplencia qtd={qtdAtrasadas} valorAtrasado={consolidado.total} />
+
+      {/* Valor consolidado atualizado (Patrick: "vou fazer um pix manual") */}
+      {consolidado.qtd > 0 && (
+        <CardValorConsolidado
+          qtdMensalidades={consolidado.qtd}
+          totalBruto={consolidado.bruto}
+          totalAtualizado={consolidado.total}
+          diasAtrasoMaximo={consolidado.diasAtrasoMaximo}
+        />
+      )}
 
       {/* KPIs rápidos */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

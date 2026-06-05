@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { getReguaMetrics } from "@/lib/services/regua-metrics";
 import { ReguaVolumeChart } from "@/components/charts/ReguaVolumeChart";
+import { distribuicaoInadimplencia, topInadimplentes } from "@/lib/services/inadimplencia";
+import { InadimplenciaPanel } from "@/components/InadimplenciaPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,7 @@ const statusStyle: Record<string, string> = {
 };
 
 export default async function ReguaCobrancaPage() {
-  const [reguas, execucoes, metrics] = await Promise.all([
+  const [reguas, execucoes, metrics, inadDist, inadTop] = await Promise.all([
     prisma.reguaCobranca.findMany({
       include: { _count: { select: { passos: true, execucoes: true } } },
       orderBy: { createdAt: "desc" },
@@ -37,6 +39,8 @@ export default async function ReguaCobrancaPage() {
       },
     }),
     getReguaMetrics(),
+    distribuicaoInadimplencia(),
+    topInadimplentes(10),
   ]);
 
   return (
@@ -134,6 +138,9 @@ export default async function ReguaCobrancaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Inadimplência por nível (Patrick call 18/05) */}
+      <InadimplenciaPanel distribuicao={inadDist} topInadimplentes={inadTop} />
 
       {/* Volume por dia */}
       <Card>

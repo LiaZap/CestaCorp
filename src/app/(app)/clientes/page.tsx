@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Upload, Search, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { formatCpfCnpj } from "@/lib/utils";
+import { contarAtrasadasPorCliente } from "@/lib/services/inadimplencia";
+import { BolinhaAtraso } from "@/components/BolinhaAtraso";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,9 @@ export default async function ClientesPage({
     }),
     prisma.cliente.count({ where }),
   ]);
+
+  // Bolinha de inadimplência (Patrick call 18/05) — 1 query agregada
+  const inadimplenciaMap = await contarAtrasadasPorCliente(clientes.map((c) => c.id));
 
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
 
@@ -133,28 +138,34 @@ export default async function ClientesPage({
               </tr>
             </thead>
             <tbody>
-              {clientes.map((c) => (
-                <tr key={c.id} className="border-b last:border-0 hover:bg-muted/50">
-                  <td className="py-2 pr-3">{c.codigo ?? "—"}</td>
-                  <td className="py-2 pr-3">
-                    <Link href={`/clientes/${c.id}`} className="font-medium hover:underline">
-                      {c.razaoSocial}
-                    </Link>
-                    {c.nomeFantasia && c.nomeFantasia !== c.razaoSocial && (
-                      <p className="text-[11px] text-muted-foreground">{c.nomeFantasia}</p>
-                    )}
-                  </td>
-                  <td className="py-2 pr-3 font-mono text-xs">{formatCpfCnpj(c.cpfCnpj)}</td>
-                  <td className="py-2 pr-3">{c.classificacao ?? "—"}</td>
-                  <td className="py-2 pr-3">
-                    <span className={"status-badge " + (c.status === "ATIVO" ? "status-ativo" : "status-aberto")}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-3 text-right">{c._count.contratos}</td>
-                  <td className="py-2 pr-3 text-right">{c._count.cobrancas}</td>
-                </tr>
-              ))}
+              {clientes.map((c) => {
+                const qtdAtrasadas = inadimplenciaMap.get(c.id) ?? 0;
+                return (
+                  <tr key={c.id} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="py-2 pr-3">{c.codigo ?? "—"}</td>
+                    <td className="py-2 pr-3">
+                      <span className="flex items-center gap-2">
+                        <BolinhaAtraso qtd={qtdAtrasadas} />
+                        <Link href={`/clientes/${c.id}`} className="font-medium hover:underline">
+                          {c.razaoSocial}
+                        </Link>
+                      </span>
+                      {c.nomeFantasia && c.nomeFantasia !== c.razaoSocial && (
+                        <p className="text-[11px] text-muted-foreground">{c.nomeFantasia}</p>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-xs">{formatCpfCnpj(c.cpfCnpj)}</td>
+                    <td className="py-2 pr-3">{c.classificacao ?? "—"}</td>
+                    <td className="py-2 pr-3">
+                      <span className={"status-badge " + (c.status === "ATIVO" ? "status-ativo" : "status-aberto")}>
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 text-right">{c._count.contratos}</td>
+                    <td className="py-2 pr-3 text-right">{c._count.cobrancas}</td>
+                  </tr>
+                );
+              })}
               {clientes.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-muted-foreground">
