@@ -14,13 +14,35 @@
  * Chamado em src/instrumentation.ts no boot do Next.js.
  */
 
-/** Envs obrigatórias em produção. Sem elas → process.exit(1). */
+/** Envs obrigatórias em produção. Sem elas → process.exit(1).
+ *
+ *  Mínimo absoluto pra app subir sem inconsistência:
+ *  - DB e Mongo (todas as queries quebram sem)
+ *  - NEXTAUTH_SECRET/URL (cookies)
+ *  - CRON_SECRET (interno — usado pelo scheduler local pra disparar rotas /api/cron)
+ */
 const REQUIRED_PROD = [
   "DATABASE_URL",
   "MONGODB_URI",
   "NEXTAUTH_SECRET",
   "NEXTAUTH_URL",
   "CRON_SECRET",
+] as const;
+
+/** Envs recomendadas em produção. Sem elas → só warn (app sobe normal).
+ *
+ *  Cada integração tem comportamento defensivo se sua env não estiver setada:
+ *  - NIBO/Digisac/Autentique TOKEN ausente → tela mostra "modo demo"
+ *  - *_WEBHOOK_SECRET ausente → o handler retorna 503 quando alguém bate
+ *    no webhook (não fail-open). Patrick precisa gerar 32 bytes random,
+ *    cadastrar no painel da integração, e colar no EasyPanel.
+ *  - SMTP_* ausente → enviarEmail() marca "simulado" e loga (não falha
+ *    convite/reset de senha; só não envia o email real).
+ *
+ *  Pra primeiro deploy "pra mostrar pro cliente" só CRON_SECRET é
+ *  estritamente necessário. Webhooks/SMTP podem entrar depois.
+ */
+const RECOMMENDED_PROD = [
   "NIBO_TOKEN",
   "NIBO_WEBHOOK_SECRET",
   "DIGISAC_TOKEN",
@@ -28,10 +50,6 @@ const REQUIRED_PROD = [
   "DIGISAC_SERVICE_ID",
   "AUTENTIQUE_TOKEN",
   "AUTENTIQUE_WEBHOOK_SECRET",
-] as const;
-
-/** Envs recomendadas em produção. Sem elas → só warn. */
-const RECOMMENDED_PROD = [
   "SMTP_HOST",
   "SMTP_PORT",
   "SMTP_USER",
@@ -39,6 +57,7 @@ const RECOMMENDED_PROD = [
   "SMTP_FROM",
   "TZ",
   "SEED_ADMIN_PASSWORD",
+  "CERTIFICATE_ENCRYPTION_KEY",
 ] as const;
 
 export function verificarEnvProducao() {
