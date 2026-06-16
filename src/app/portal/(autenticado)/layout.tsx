@@ -8,7 +8,7 @@ import { PortalSignOut } from "./PortalSignOut";
 const menu = [
   { href: "/portal", icon: LayoutDashboard, label: "Início" },
   { href: "/portal/cobrancas", icon: CreditCard, label: "Meus boletos" },
-  { href: "/portal/contratos", icon: FileText, label: "Contratos" },
+  { href: "/portal/documentos", icon: FileText, label: "Documentos" },
   { href: "/portal/formularios", icon: ClipboardList, label: "Formulários" },
   { href: "/portal/meus-dados", icon: User, label: "Meus dados" },
 ];
