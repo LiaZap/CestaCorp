@@ -11,6 +11,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { prisma } from "@/lib/db/prisma";
+import { driveConfigurado, uploadParaDrive } from "./drive";
+import { logger } from "@/lib/logger";
 
 // Import dinâmico que escapa da análise estática do webpack — só resolve
 // em runtime quando a dep está realmente instalada.
@@ -118,6 +120,39 @@ export async function uploadArquivo(file: {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn("[storage] falha ao gravar FileMetadata — arquivo subiu mas sem ownership", err);
+  }
+
+  // #15: Drive backup pra anexos de formulário (Patrick 12/06 — mandou link
+  // da pasta). Drive é COMPLEMENTAR — arquivo continua no FS/S3 com permissões
+  // próprias do sistema, Drive é só pra equipe consultar com a UX que ela já
+  // conhece. Falha de Drive não bloqueia o upload do cliente.
+  if (file.scope === "form_response" && driveConfigurado()) {
+    try {
+      const r = await uploadParaDrive({
+        buffer: file.buffer,
+        filename: file.name,
+        mime: file.mime,
+        // Cria subpasta por clienteId quando vier identificado (preCadastros
+        // ficam na raiz da pasta principal).
+        subfolderName: file.ownerType === "cliente" && file.ownerId
+          ? `cliente-${file.ownerId.slice(0, 8)}`
+          : "form-respostas",
+      });
+      // Liga a referência ao Drive no FileMetadata
+      await prisma.fileMetadata.update({
+        where: { hash: id },
+        data: {
+          driveFileId: r.fileId,
+          driveLink: r.webViewLink,
+        } as any,
+      }).catch(() => {
+        // Colunas opcionais — se schema não tiver ainda, ignora
+      });
+    } catch (err: any) {
+      logger.warn("[storage] falha ao subir pro Drive (arquivo permanece local)", {
+        err: String(err?.message ?? err).slice(0, 200),
+      });
+    }
   }
 
   return {

@@ -1037,6 +1037,11 @@ model FileMetadata {
   ownerId      String? // id do dono (clienteId, userId, ou null se system)
   uploadedAt   DateTime @default(now())
   uploadedBy   String? // userId que fez o upload
+  /// #15: Quando vier de form_response e Drive estiver configurado, guardamos
+  /// referência pra equipe consultar via Drive UI. Cliente continua baixando
+  /// pelo /api/files/[id] com auth do sistema (Drive é COMPLEMENTAR, não substitui).
+  driveFileId  String?
+  driveLink    String? // URL webViewLink
 
   @@index([ownerType, ownerId])
   @@index([scope])
