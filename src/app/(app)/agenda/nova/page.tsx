@@ -1,10 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+interface TagComTextos {
+  id: string;
+  nome: string;
+  slug: string;
+  categoria: string;
+  textos: Array<{ id: string; titulo: string; canal: string | null }>;
+}
 
 export default function NovaObrigacaoPage() {
   const router = useRouter();
@@ -19,12 +27,22 @@ export default function NovaObrigacaoPage() {
     antecedenciaDias: 7,
     horarioLembrete: "08:00",
     canais: ["whatsapp"] as string[],
+    tagTextoId: "",
     global: true,
     categoriaCliente: "",
     tributacaoFiltro: "",
     responsavel: "",
     ativa: true,
   });
+
+  const [tagsComTextos, setTagsComTextos] = useState<TagComTextos[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/tag-textos", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setTagsComTextos(d))
+      .catch(() => {});
+  }, []);
 
   function toggleCanal(canal: string) {
     setF((s: any) => ({
@@ -150,6 +168,33 @@ export default function NovaObrigacaoPage() {
             ))}
             {f.canais.length === 0 && (
               <p className="text-xs text-destructive">⚠ Sem canais → o lembrete será gerado mas não enviado.</p>
+            )}
+
+            {(f.canais.includes("whatsapp") || f.canais.includes("email")) && (
+              <div className="space-y-1 pt-2 border-t">
+                <Label>Mensagem que será enviada</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={f.tagTextoId}
+                  onChange={(e) => up("tagTextoId", e.target.value)}
+                >
+                  <option value="">— escolher mensagem do catálogo de tags —</option>
+                  {tagsComTextos.map((tag) => (
+                    <optgroup key={tag.id} label={`${tag.nome} (${tag.categoria})`}>
+                      {tag.textos.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.titulo}{t.canal ? ` · ${t.canal}` : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <p className="text-[10px] text-muted-foreground">
+                  Mensagens vêm da aba TEXTOS TAGS HUBLX da V-106. Pra editar texto ou criar
+                  nova, abra a tag em <a href="/tags" className="underline" target="_blank">/tags</a>.
+                  Sem mensagem selecionada, o sistema avisa antes de disparar.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, Building2, User, Phone, Mail, Briefcase, Calendar } from "lucide-react";
 import { formatDateTime, formatMoney, formatCpfCnpj } from "@/lib/utils";
 import { VirarEmpresaButton } from "./VirarEmpresaButton";
+import { EnviarFormularioCard } from "./EnviarFormularioCard";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,15 @@ export default async function DetalhePreCadastroPage({
           </CardContent>
         </Card>
       </div>
+
+      {!jaVirou && (
+        <EnviarFormularioCard
+          preCadastroId={pre.id}
+          nomeContato={pre.nomeContato}
+          emailContato={pre.emailContato}
+          telefoneContato={pre.telefoneContato}
+        />
+      )}
 
       <Card>
         <CardHeader>

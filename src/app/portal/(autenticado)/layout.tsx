@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
-import { LayoutDashboard, FileText, CreditCard, ClipboardList, User, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, CreditCard, ClipboardList, User, LogOut, Calendar } from "lucide-react";
 import { PortalSignOut } from "./PortalSignOut";
 
 const menu = [
   { href: "/portal", icon: LayoutDashboard, label: "Início" },
+  { href: "/portal/agenda", icon: Calendar, label: "Agenda" },
   { href: "/portal/cobrancas", icon: CreditCard, label: "Meus boletos" },
   { href: "/portal/documentos", icon: FileText, label: "Documentos" },
   { href: "/portal/formularios", icon: ClipboardList, label: "Formulários" },

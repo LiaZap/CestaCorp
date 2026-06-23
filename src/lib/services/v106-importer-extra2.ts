@@ -463,6 +463,88 @@ export async function importarEncerrados(wb: ExcelJS.Workbook): Promise<AbaResul
 }
 
 // =====================================================================
+// 8. PLANOS POR CLIENTE — cria PlanoCliente ATIVO baseado em seguimento/
+//    categoria/honorarioInicial do Cliente. Patrick (reunião 05/06):
+//    cada cliente pode ter Contabilidade + Gestão Consultório como
+//    serviços separados. Aqui criamos UM plano inicial pelo serviço
+//    inferido da V-106; equipe ajusta depois.
+//    NÃO usa workbook — opera só na base já importada. Roda ao final.
+// =====================================================================
+export async function criarPlanosIniciaisV106(): Promise<AbaResult> {
+  let novos = 0, atualizados = 0, ignorados = 0;
+
+  const servicos = await prisma.catalogoServico.findMany({
+    select: { id: true, slug: true, nome: true, categoria: true },
+  });
+  const servicoPorSlug = new Map(servicos.map((s) => [s.slug, s]));
+
+  // Mapa categoria/seguimento → slug do catálogo
+  function resolverServicoSlug(cliente: any): string | null {
+    const cat = String(cliente.categoria ?? "").toLowerCase();
+    const seg = String(cliente.seguimento ?? "").toLowerCase();
+    const trib = String(cliente.tributacao ?? "").toLowerCase();
+
+    if (cat.includes("contabilidade")) return "contabilidade";
+    if (cat.includes("mei padrão") || cat.includes("mei padrao")) return "mei-padrao";
+    if (cat.includes("mei")) return "mei-basico";
+    if (cat.includes("doméstico") || cat.includes("domestico") || trib.includes("domést")) return "esocial-domestico";
+    if (cat.includes("carnê") || cat.includes("carne")) return "carne-leao";
+    if (cat.includes("pessoa física") || cat.includes("pessoa fisica")) return "pessoa-fisica";
+    if (cat.includes("condominial")) return "administracao-condominial";
+    if (cat.includes("bpo")) return "bpo-financeiro";
+    if (cat.includes("imposto")) return "imposto-de-renda";
+    if (seg.includes("medicina") || seg.includes("consultório") || seg.includes("consultorio")) {
+      return "gestao-de-agenda-cobrancas-e-contratos";
+    }
+    // Default: contabilidade pra PJ ativa
+    if (!trib.includes("inativa") && !trib.includes("encerr")) return "contabilidade";
+    return null;
+  }
+
+  const clientes = await prisma.cliente.findMany({
+    where: { deletedAt: null, status: { in: ["ATIVO", "PROSPECT", "SUSPENSO"] } },
+    select: {
+      id: true, codigo: true, razaoSocial: true, categoria: true, seguimento: true,
+      tributacao: true, honorarioInicial: true, mesAniversarioReajuste: true,
+    },
+  });
+
+  for (const c of clientes) {
+    const slug = resolverServicoSlug(c);
+    if (!slug) { ignorados++; continue; }
+    const servico = servicoPorSlug.get(slug);
+    if (!servico) { ignorados++; continue; }
+
+    const valor = c.honorarioInicial ? Number(c.honorarioInicial) : 0;
+
+    // Idempotência: só cria se não tem plano ATIVO desse serviço
+    const existe = await prisma.planoCliente.findFirst({
+      where: { clienteId: c.id, servicoId: servico.id, status: "ATIVO" },
+    });
+    if (existe) {
+      atualizados++;
+      continue;
+    }
+
+    try {
+      await prisma.planoCliente.create({
+        data: {
+          clienteId: c.id,
+          servicoId: servico.id,
+          status: "ATIVO",
+          dataInicio: new Date(),
+          valorMensal: valor,
+          observacao: `Criado automático no import V-106 a partir de seguimento "${c.seguimento ?? ""}" / categoria "${c.categoria ?? ""}"`,
+        },
+      });
+      novos++;
+    } catch { ignorados++; }
+  }
+
+  return { aba: "PLANOS (auto)", ok: true, novos, atualizados, ignorados };
+}
+
+// =====================================================================
 // ENTRY
 // =====================================================================
 export async function importarV106Extras2(wb: ExcelJS.Workbook): Promise<AbaResult[]> {
@@ -488,6 +570,10 @@ export async function importarV106Extras2(wb: ExcelJS.Workbook): Promise<AbaResu
 
   logger.info("V-106 extras2: ENCERRADOS…");
   out.push(await importarEncerrados(wb));
+
+  // Planos: roda DEPOIS de catálogo de serviços + clientes
+  logger.info("V-106 extras2: PLANOS (auto baseado em seguimento/categoria)…");
+  out.push(await criarPlanosIniciaisV106());
 
   return out;
 }
